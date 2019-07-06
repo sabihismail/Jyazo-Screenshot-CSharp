@@ -1,0 +1,22 @@
+﻿<Window x:Class="ScreenShot.src.capture.CaptureGIFWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="CaptureImage"
+        Topmost="True"
+        ShowInTaskbar="False"
+        AllowsTransparency="True"
+        WindowStyle="None">
+    <Window.Background>
+        <SolidColorBrush Color="Transparent"/>
+    </Window.Background>
+    <Grid>
+        <Canvas x:Name="canvas" Background="Transparent" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <Image x:Name="cancel" MouseLeftButtonDown="Cancel_OnMouseLeftButtonDown"></Image>
+            <Image x:Name="pause" MouseLeftButtonDown="Pause_OnMouseLeftButtonDown"></Image>
+            <Image x:Name="complete" MouseLeftButtonDown="Complete_OnMouseLeftButtonDown"></Image>
+        </Canvas>
+    </Grid>
+</Window>
