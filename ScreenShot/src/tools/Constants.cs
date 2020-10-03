@@ -4,9 +4,9 @@ namespace ScreenShot.src.tools
 {
     public class Constants
     {
-        public static readonly string PROGRAM_NAME = "Jyazo";
-        public static readonly string CREATOR = "ArkaPrime";
-        public static readonly string GITHUB = "https://github.com/sabihismail/Jyazo-Screenshot-CSharp";
+        public const string PROGRAM_NAME = "Jyazo";
+        public const string CREATOR = "ArkaPrime";
+        public const string GITHUB = "https://github.com/sabihismail/Jyazo-Screenshot-CSharp";
         
         private static readonly string SAVE_DIRECTORY = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile) + "\\" + CREATOR + "\\" + PROGRAM_NAME + "\\";
         
