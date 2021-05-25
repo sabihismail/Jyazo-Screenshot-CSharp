@@ -26,22 +26,22 @@ namespace ScreenShot.views
 
             InitializeComponent();
 
-            ChkEnableGIFCapture.IsChecked = settings.enableGIF;
+            ChkEnableGIFCapture.IsChecked = settings.EnableGIF;
 
-            ChkAutomaticallySaveCapturedImagesToDisk.IsChecked = settings.saveAllImages;
-            TxtSaveAllCapturedImages.Text = settings.saveAllImages ? settings.saveDirectory : "";
+            ChkAutomaticallySaveCapturedImagesToDisk.IsChecked = settings.SaveAllImages;
+            TxtSaveAllCapturedImages.Text = settings.SaveAllImages ? settings.SaveDirectory : "";
 
-            ChkEnableImageShortcut.IsChecked = settings.enableImageShortcut;
-            ChkEnableGIFShortcut.IsChecked = settings.enableGIFShortcut;
+            ChkEnableImageShortcut.IsChecked = settings.EnableImageShortcut;
+            ChkEnableGIFShortcut.IsChecked = settings.EnableGIFShortcut;
 
-            imageShortcutKeycodes = settings.Keys;
-            gifShortcutKeycodes = settings.Keys2;
+            imageShortcutKeycodes = settings.CaptureImageShortcutKeys;
+            gifShortcutKeycodes = settings.CaptureGIFShortcutKeys;
 
             UpdateShortcutText(imageShortcutKeycodes, TxtImageShortcut);
             UpdateShortcutText(gifShortcutKeycodes, TxtGIFShortcut);
 
-            ChkEnablePrintScreen.IsChecked = settings.enablePrintScreen;
-            ChkPlaySound.IsChecked = settings.enableSound;
+            ChkEnablePrintScreen.IsChecked = settings.EnablePrintScreen;
+            ChkPlaySound.IsChecked = settings.EnableSound;
         }
 
         private void ChkAutomaticallySaveCapturedImagesToDisk_OnClick(object sender, RoutedEventArgs e)
@@ -156,7 +156,10 @@ namespace ScreenShot.views
                 keysString += keyStr + " + ";
             }
 
-            keysString = keysString.Substring(0, keysString.Length - 3);
+            if (keysString.Length > 3)
+            {
+                keysString = keysString.Substring(0, keysString.Length - 3);
+            }
 
             textbox.Text = keysString;
         }
@@ -192,7 +195,7 @@ namespace ScreenShot.views
 
         private void BtnSave_OnClick(object sender, RoutedEventArgs e)
         {
-            settings.saveSettings(IsChecked(ChkEnableGIFCapture),
+            settings.SaveSettings(IsChecked(ChkEnableGIFCapture),
                 IsChecked(ChkAutomaticallySaveCapturedImagesToDisk),
                 TxtSaveAllCapturedImages.Text,
                 IsChecked(ChkEnableImageShortcut),

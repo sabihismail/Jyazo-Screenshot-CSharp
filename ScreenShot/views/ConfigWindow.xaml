@@ -13,13 +13,15 @@
                 <TextBox x:Name="TxtServerEndpoint"></TextBox>
             </StackPanel>
 
-            <StackPanel Orientation="Vertical" Margin="0, 6">
+            <CheckBox x:Name="ChkOAuth2App" Content="OAuth2 Application" Click="CheckBox_Click"/>
+            
+            <StackPanel x:Name="InputPasswordInfo" Orientation="Vertical" Margin="0, 6">
                 <TextBlock Text="Server Endpoint Password (Leave blank if not applicable)"></TextBlock>
                 <TextBox x:Name="TxtServerPassword"></TextBox>
             </StackPanel>
 
             <StackPanel Orientation="Vertical" Margin="0, 6">
-                <CheckBox x:Name="ChkGfycatUpload" Content="Enable Gfycat Upload (Recommended for GIFs)" Click="ChkGfycatUpload_OnClick"></CheckBox>
+                <CheckBox x:Name="ChkGfycatUpload" Content="Enable Gfycat Upload" Click="ChkGfycatUpload_OnClick"></CheckBox>
 
                 <StackPanel Orientation="Vertical" Margin="0, 6">
                     <TextBlock Text="Gfycat Client ID (Instructions on Github)"></TextBlock>

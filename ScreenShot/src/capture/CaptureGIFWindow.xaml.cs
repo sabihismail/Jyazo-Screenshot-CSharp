@@ -22,6 +22,8 @@ namespace ScreenShot.src.capture
 
         private const int THICKNESS = 1;
 
+        private const int GIF_GAP = 75;
+
         private bool enabled = true;
         private bool paused;
         private bool completed;
@@ -48,7 +50,6 @@ namespace ScreenShot.src.capture
             complete.Source = completeImage;
             
             Canvas.SetTop(pause, capturedArea.Height + BUTTON_GAP_Y);
-            // ReSharper disable once PossibleLossOfFraction
             Canvas.SetLeft(pause, capturedArea.Width / 2 - pauseImage.Width / 2);
 
             Canvas.SetTop(cancel, Canvas.GetTop(pause));
@@ -78,34 +79,34 @@ namespace ScreenShot.src.capture
             var file = Path.GetTempPath() + DateTimeOffset.Now.ToUnixTimeMilliseconds() + ".gif";
 
             var tasks = new List<Task>();
-            using (var writer = new GIFWriter(file, 100, 0))
+            using (var gif = AnimatedGif.AnimatedGif.Create(file, GIF_GAP))
             {
                 var i = 0;
                 while (enabled)
                 {
                     while (paused)
                     {
-                        Thread.Sleep(500);
+                        Thread.Sleep(100);
                     }
 
                     var task = Task.Run(() =>
                     {
                         var bitmap = CaptureUsingBMP(capturedArea);
 
-                        writer.WriteFrame(bitmap);
+                        gif.AddFrame(bitmap);
 
                         Interlocked.Increment(ref i);
                     });
 
                     tasks.Add(task);
 
+                    Thread.Sleep(GIF_GAP);
+                }
+
+                while (tasks.Any(x => !x.IsCompleted))
+                {
                     Thread.Sleep(100);
                 }
-            }
-
-            if (tasks.Any(x => !x.IsCompleted))
-            {
-                Thread.Sleep(100);
             }
 
             if (completed)

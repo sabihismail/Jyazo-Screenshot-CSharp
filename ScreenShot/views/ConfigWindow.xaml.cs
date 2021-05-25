@@ -19,6 +19,12 @@ namespace ScreenShot.views
             ChkGfycatUpload.IsChecked = config.EnableGfycatUpload;
             TxtGfycatClientID.Text = config.GfycatClientID;
             TxtGfycatClientSecret.Text = config.GfycatClientSecret;
+            ChkOAuth2App.IsChecked = config.EnableOAuth2;
+
+            if (IsChecked(ChkOAuth2App))
+            {
+                InputPasswordInfo.Visibility = Visibility.Collapsed;
+            }
         }
 
         private void ChkGfycatUpload_OnClick(object sender, RoutedEventArgs e)
@@ -40,13 +46,26 @@ namespace ScreenShot.views
 
         private void BtnSave_OnClick(object sender, RoutedEventArgs e)
         {
-            config.saveConfig(TxtServerEndpoint.Text, 
+            config.SaveConfig(TxtServerEndpoint.Text, 
                 TxtServerPassword.Text, 
                 IsChecked(ChkGfycatUpload),
                 TxtGfycatClientID.Text, 
-                TxtGfycatClientSecret.Text);
+                TxtGfycatClientSecret.Text,
+                IsChecked(ChkOAuth2App));
 
             Close();
+        }
+
+        private void CheckBox_Click(object sender, RoutedEventArgs e)
+        {
+            if (IsChecked(ChkOAuth2App))
+            {
+                InputPasswordInfo.Visibility = Visibility.Collapsed;
+            }
+            else
+            {
+                InputPasswordInfo.Visibility = Visibility.Visible;
+            }
         }
 
         private void BtnCancel_OnClick(object sender, RoutedEventArgs e)

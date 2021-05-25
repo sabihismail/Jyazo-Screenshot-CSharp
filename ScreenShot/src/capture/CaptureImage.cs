@@ -20,10 +20,15 @@ namespace ScreenShot.src.capture
             {
                 var capturedArea = args.CapturedArea;
 
+                if (capturedArea.Width <= 0 || capturedArea.Height <= 0)
+                {
+                    return;
+                }
+
                 var file = Path.GetTempPath() + DateTimeOffset.Now.ToUnixTimeMilliseconds() + ".png";
                 file = CaptureUsingBMP(file, capturedArea);
 
-                Upload.UploadFile(file, settings, config);
+                Upload.UploadFile(file, settings, this.config);
             };
         }
 
@@ -34,9 +39,9 @@ namespace ScreenShot.src.capture
             g.CopyFromScreen(capturedArea.Left, capturedArea.Top, 0, 0, bmp.Size, CopyPixelOperation.SourceCopy);
             bmp.Save(file, ImageFormat.Png);
 
-            if (!settings.saveAllImages) return file;
+            if (!settings.SaveAllImages) return file;
 
-            var output = settings.saveDirectory + DateTimeOffset.Now.ToUnixTimeMilliseconds() + ".png";
+            var output = settings.SaveDirectory + DateTimeOffset.Now.ToUnixTimeMilliseconds() + ".png";
             File.Move(file, output);
             file = output;
 

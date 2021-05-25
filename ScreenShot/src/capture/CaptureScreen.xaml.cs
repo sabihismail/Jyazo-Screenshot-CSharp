@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -60,7 +61,12 @@ namespace ScreenShot.src.capture
 
         private void Canvas_OnMouseUp(object sender, MouseButtonEventArgs e)
         {
-            CapturedArea = new System.Drawing.Rectangle((int) Canvas.GetLeft(rect), (int) Canvas.GetTop(rect), (int) rect.Width, (int) rect.Height);
+            var pos = rect.PointToScreen(new Point(0, 0));
+
+            var x = (int)pos.X;
+            var y = (int)pos.Y;
+
+            CapturedArea = new System.Drawing.Rectangle(x, y, (int)rect.Width, (int)rect.Height);
 
             Close();
         }

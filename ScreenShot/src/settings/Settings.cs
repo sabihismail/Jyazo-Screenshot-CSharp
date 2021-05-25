@@ -14,29 +14,37 @@ namespace ScreenShot.src
 {
     public class Settings
     {
-        public bool enableGIF = true;
-        public bool saveAllImages = true;
-        public string saveDirectory = Constants.DEFAULT_ALL_IMAGES_FOLDER;
-        public bool enableImageShortcut = true;
-        public bool enableGIFShortcut = true;
-        public string captureImageShortcut = Constants.DEFAULT_IMAGE_SHORTCUT;
-        public string captureGIFShortcut = Constants.DEFAULT_GIF_SHORTCUT;
-        public List<string> keys = getListFromString(Constants.DEFAULT_IMAGE_SHORTCUT);
-        public List<string> keys2 = getListFromString(Constants.DEFAULT_GIF_SHORTCUT);
-        public List<Key> Keys = stringToKeys(Constants.DEFAULT_IMAGE_SHORTCUT);
-        public List<Key> Keys2 = stringToKeys(Constants.DEFAULT_GIF_SHORTCUT);
-        public bool enablePrintScreen = true;
-        public bool enableSound = true;
+        public bool EnableGIF = true;
+        
+        public bool SaveAllImages = true;
+        
+        public string SaveDirectory = Constants.DEFAULT_ALL_IMAGES_FOLDER;
+        
+        public bool EnableImageShortcut = true;
+       
+        public bool EnableGIFShortcut = true;
+        
+        public string CaptureImageShortcut = Constants.DEFAULT_IMAGE_SHORTCUT;
+        
+        public string CaptureGIFShortcut = Constants.DEFAULT_GIF_SHORTCUT;
+        
+        public List<Key> CaptureImageShortcutKeys = StringToKeys(Constants.DEFAULT_IMAGE_SHORTCUT);
+        
+        public List<Key> CaptureGIFShortcutKeys = StringToKeys(Constants.DEFAULT_GIF_SHORTCUT);
+        
+        public bool EnablePrintScreen = true;
+
+        public bool EnableSound = true;
 
         public Settings()
         {
             if (File.Exists(Constants.SETTINGS_FILE))
             {
-                updateSettings();
+                UpdateSettings();
             }
             else
             {
-                saveSettings(enableGIF, saveAllImages, saveDirectory, enableImageShortcut, Keys, enableGIFShortcut, Keys2, enablePrintScreen, enableSound);
+                SaveSettings(EnableGIF, SaveAllImages, SaveDirectory, EnableImageShortcut, CaptureImageShortcutKeys, EnableGIFShortcut, CaptureGIFShortcutKeys, EnablePrintScreen, EnableSound);
             }
 
             if (File.Exists(Constants.CONFIG_FILE)) return;
@@ -47,17 +55,17 @@ namespace ScreenShot.src
             settingsWindow.Show();
         }
 
-        public void saveSettings(bool enableGIF, bool saveAllImages, String saveDirectory, bool enableImageShortcut, List<Key> imageShortcutKeys, bool enableGIFShortcut, List<Key> gifShortcutKeys, bool enablePrintScreen, bool enableSound)
+        public void SaveSettings(bool enableGIF, bool saveAllImages, String saveDirectory, bool enableImageShortcut, List<Key> imageShortcutKeys, bool enableGIFShortcut, List<Key> gifShortcutKeys, bool enablePrintScreen, bool enableSound)
         {
-            this.enableGIF = enableGIF;
-            this.saveAllImages = saveAllImages;
-            this.saveDirectory = string.IsNullOrWhiteSpace(saveDirectory) ? Constants.DEFAULT_ALL_IMAGES_FOLDER : saveDirectory;
-            this.enableImageShortcut = enableImageShortcut;
-            this.enableGIFShortcut = enableGIFShortcut;
-            this.Keys = imageShortcutKeys;
-            this.Keys2 = gifShortcutKeys;
-            this.enablePrintScreen = enablePrintScreen;
-            this.enableSound = enableSound;
+            EnableGIF = enableGIF;
+            SaveAllImages = saveAllImages;
+            SaveDirectory = string.IsNullOrWhiteSpace(saveDirectory) ? Constants.DEFAULT_ALL_IMAGES_FOLDER : saveDirectory;
+            EnableImageShortcut = enableImageShortcut;
+            EnableGIFShortcut = enableGIFShortcut;
+            CaptureImageShortcutKeys = imageShortcutKeys;
+            CaptureGIFShortcutKeys = gifShortcutKeys;
+            EnablePrintScreen = enablePrintScreen;
+            EnableSound = enableSound;
 
             try
             {
@@ -69,7 +77,7 @@ namespace ScreenShot.src
 
                 if (string.IsNullOrWhiteSpace(saveDirectory))
                 {
-                    saveDirectory = this.saveDirectory;
+                    saveDirectory = SaveDirectory;
                 }
 
                 var settingsContainer = new SettingsContainer
@@ -81,8 +89,8 @@ namespace ScreenShot.src
                     SaveDirectory = saveDirectory,
                     EnableImageShortcut = enableImageShortcut,
                     EnableGIFShortcut = enableGIFShortcut,
-                    Keys = KeysString,
-                    Keys2 = KeysString2
+                    ImageKeys = KeysString,
+                    GifKeys = KeysString2
                 };
 
                 var jsonStr = JsonConvert.SerializeObject(settingsContainer);
@@ -95,7 +103,7 @@ namespace ScreenShot.src
             }
         }
         
-        private void updateSettings()
+        private void UpdateSettings()
         {
             var settingsFile = Constants.SETTINGS_FILE;
 
@@ -105,19 +113,17 @@ namespace ScreenShot.src
 
                 var configContainer = JsonConvert.DeserializeObject<SettingsContainer>(jsonStr);
 
-                enableGIF = configContainer.EnableGIF;
-                saveAllImages = configContainer.SaveAllImages;
-                enablePrintScreen = configContainer.EnablePrintScreen;
-                enableSound = configContainer.EnableSound;
-                saveDirectory = !string.IsNullOrWhiteSpace(configContainer.SaveDirectory) ? configContainer.SaveDirectory : "";
-                enableImageShortcut = configContainer.EnableImageShortcut;
-                captureImageShortcut = !string.IsNullOrWhiteSpace(configContainer.Keys) ? configContainer.Keys : "";
-                keys = !string.IsNullOrWhiteSpace(configContainer.Keys) ? getListFromString(configContainer.Keys) : new List<string>();
-                Keys = !string.IsNullOrWhiteSpace(configContainer.Keys) ? stringToKeys(configContainer.Keys) : new List<Key>();
-                enableGIFShortcut = configContainer.EnableGIFShortcut;
-                captureGIFShortcut = !string.IsNullOrWhiteSpace(configContainer.Keys2) ? configContainer.Keys2 : "";
-                keys2 = !string.IsNullOrWhiteSpace(configContainer.Keys2) ? getListFromString(configContainer.Keys2) : new List<string>();
-                Keys2 = !string.IsNullOrWhiteSpace(configContainer.Keys2) ? stringToKeys(configContainer.Keys2) : new List<Key>();
+                EnableGIF = configContainer.EnableGIF;
+                SaveAllImages = configContainer.SaveAllImages;
+                EnablePrintScreen = configContainer.EnablePrintScreen;
+                EnableSound = configContainer.EnableSound;
+                SaveDirectory = !string.IsNullOrWhiteSpace(configContainer.SaveDirectory) ? configContainer.SaveDirectory : "";
+                EnableImageShortcut = configContainer.EnableImageShortcut;
+                CaptureImageShortcut = !string.IsNullOrWhiteSpace(configContainer.ImageKeys) ? configContainer.ImageKeys : "";
+                CaptureImageShortcutKeys = !string.IsNullOrWhiteSpace(configContainer.ImageKeys) ? StringToKeys(configContainer.ImageKeys) : new List<Key>();
+                EnableGIFShortcut = configContainer.EnableGIFShortcut;
+                CaptureGIFShortcut = !string.IsNullOrWhiteSpace(configContainer.GifKeys) ? configContainer.GifKeys : "";
+                CaptureGIFShortcutKeys = !string.IsNullOrWhiteSpace(configContainer.GifKeys) ? StringToKeys(configContainer.GifKeys) : new List<Key>();
             }
             catch (Exception)
             {
@@ -128,11 +134,11 @@ namespace ScreenShot.src
 
                 Logging.Log("Settings file is corrupted. File deleted and will be set to default values.");
 
-                saveSettings(enableGIF, saveAllImages, saveDirectory, enableImageShortcut, Keys, enableGIFShortcut, Keys2, enablePrintScreen, enableSound);
+                SaveSettings(EnableGIF, SaveAllImages, SaveDirectory, EnableImageShortcut, CaptureImageShortcutKeys, EnableGIFShortcut, CaptureGIFShortcutKeys, EnablePrintScreen, EnableSound);
             }
         }
 
-        private static List<Key> stringToKeys(string text)
+        private static List<Key> StringToKeys(string text)
         {
             var keyConverter = new KeyConverter();
 
@@ -160,14 +166,14 @@ namespace ScreenShot.src
             return allKeys;
         }
         
-        private static List<string> getListFromString(string text)
+        private static List<string> GetListFromString(string text)
         {
             var split = text.Split(' ');
 
             return split.ToList();
         }
         
-        public string getStringFromKeys(List<string> keys)
+        public string GetStringFromKeys(List<string> keys)
         {
             if (keys.Count == 0)
             {
@@ -190,13 +196,21 @@ namespace ScreenShot.src
     public class SettingsContainer
     {
         public bool EnableGIF { get; set; }
+
         public bool SaveAllImages { get; set; }
+
         public bool EnablePrintScreen { get; set; }
+
         public bool EnableSound { get; set; }
+
         public string SaveDirectory { get; set; }
+
         public bool EnableImageShortcut { get; set; }
+
         public bool EnableGIFShortcut { get; set; }
-        public string Keys { get; set; }
-        public string Keys2 { get; set; }
+
+        public string ImageKeys { get; set; }
+
+        public string GifKeys { get; set; }
     }
 }

@@ -16,6 +16,7 @@ namespace ScreenShot.src.tools
         private static readonly int SaltBitSize = 64;
         private static readonly int Iterations = 4000;
         private static readonly int MinPasswordLength = 12;
+        private static readonly bool AllowNullEntries = true;
 
         /// <summary>
         /// Simple Encryption (AES) then Authentication (HMAC) for a UTF8 Message.
@@ -255,7 +256,7 @@ namespace ScreenShot.src.tools
             nonSecretPayload = nonSecretPayload ?? new byte[] { };
 
             //User Error Checks
-            if (string.IsNullOrWhiteSpace(password) || password.Length < MinPasswordLength)
+            if (!AllowNullEntries && (string.IsNullOrWhiteSpace(password) || password.Length < MinPasswordLength))
                 throw new ArgumentException(String.Format("Must have a password of at least {0} characters!", MinPasswordLength), "password");
 
             if (secretMessage == null || secretMessage.Length == 0)
@@ -300,7 +301,7 @@ namespace ScreenShot.src.tools
         public static byte[] SimpleDecryptWithPassword(byte[] encryptedMessage, string password, int nonSecretPayloadLength = 0)
         {
             //User Error Checks
-            if (string.IsNullOrWhiteSpace(password) || password.Length < MinPasswordLength)
+            if (!AllowNullEntries && (string.IsNullOrWhiteSpace(password) || password.Length < MinPasswordLength))
                 throw new ArgumentException(String.Format("Must have a password of at least {0} characters!", MinPasswordLength), "password");
 
             if (encryptedMessage == null || encryptedMessage.Length == 0)
