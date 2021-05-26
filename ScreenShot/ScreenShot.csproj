@@ -100,6 +100,7 @@
     <Compile Include="src\upload\CEFBrowser.cs" />
     <Compile Include="src\upload\GfycatUpload.cs" />
     <Compile Include="src\upload\Upload.cs" />
+    <Compile Include="src\upload\Util.cs" />
     <Compile Include="src\upload\WebBrowserUtil.cs" />
     <Compile Include="views\ConfigWindow.xaml.cs">
       <DependentUpon>ConfigWindow.xaml</DependentUpon>

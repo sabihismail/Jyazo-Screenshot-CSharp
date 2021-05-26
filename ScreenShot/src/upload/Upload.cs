@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using Newtonsoft.Json;
 using ScreenShot.src.tools;
+using static ScreenShot.src.upload.Util;
 
 namespace ScreenShot.src.upload
 {
@@ -28,7 +29,15 @@ namespace ScreenShot.src.upload
             Application.Current.Dispatcher.Invoke(() =>
             {
                 Clipboard.SetText(result);
-                Process.Start(result);
+
+                try
+                {
+                    Process.Start(result);
+                }
+                catch
+                {
+                    Logging.Log($"Could not open URL: {result}. It was copied to your clipboard anyways.");
+                }
             });
         }
 
@@ -46,17 +55,10 @@ namespace ScreenShot.src.upload
 
         private static string UploadToServer(string file, Config config)
         {
-            using (var client = new UploadHttpClient(config))
+            using (var client = new CookieHttpClient(config))
             using (var formData = new MultipartFormDataContent())
             {
-                /*var contentType = formData.Headers.ContentType.ToString();
-                contentType = contentType.Replace("\"", "");
-                formData.Headers.Remove("Content-Type");
-
-                formData.Headers.TryAddWithoutValidation("Content-Type", contentType);*/
-
                 var str = WindowInformation.ActiveWindow;
-
                 if (string.IsNullOrWhiteSpace(str))
                 {
                     str = "";
@@ -73,15 +75,15 @@ namespace ScreenShot.src.upload
                 {
                     if (!string.IsNullOrWhiteSpace(config.ServerPassword))
                     {
-                        formData.Headers.Add("uploadpassword", config.ServerPassword);
+                        formData.Headers.Add("upload_password", config.ServerPassword);
                     }
                 }
                 else
                 {
-                    server = WebBrowserUtil.JoinURL(server, Constants.API_ENDPOINT_UPLOAD_SCREENSHOT);
+                    server = JoinURL(server, Constants.API_ENDPOINT_UPLOAD_SCREENSHOT);
                 }
 
-                using (var httpResponse = client.HttpClient.PostAsync(server, formData))
+                using (var httpResponse = client.PostAsync(server, formData))
                 {
                     var resultStr = "";
                     try
@@ -107,41 +109,6 @@ namespace ScreenShot.src.upload
 
                     return result.Output;
                 }
-            }
-        }
-
-        public class UploadHttpClient : IDisposable
-        {
-            public readonly HttpClient HttpClient;
-            private readonly HttpClientHandler Handler;
-
-            public UploadHttpClient(Config config)
-            {
-                if (config.EnableOAuth2)
-                {
-                    var cookieContainer = new CookieContainer();
-                    foreach (var cookie in config.OAuth2CookiesDotNet)
-                    {
-                        cookieContainer.Add(cookie);
-                    }
-
-                    Handler = new HttpClientHandler()
-                    {
-                        CookieContainer = cookieContainer
-                    };
-
-                    HttpClient = new HttpClient(Handler);
-                }
-                else
-                {
-                    HttpClient = new HttpClient();
-                }
-            }
-
-            public void Dispose()
-            {
-                HttpClient.Dispose();
-                Handler?.Dispose();
             }
         }
 
