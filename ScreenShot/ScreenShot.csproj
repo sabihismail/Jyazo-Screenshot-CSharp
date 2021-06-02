@@ -96,7 +96,10 @@
       <DependentUpon>CaptureScreen.xaml</DependentUpon>
     </Compile>
     <Compile Include="src\tools\GlobalKeyboardHook.cs" />
+    <Compile Include="src\tools\ScreenArrangement.cs" />
+    <Compile Include="src\tools\Util.cs" />
     <Compile Include="src\tools\WindowInformation.cs" />
+    <Compile Include="src\tools\WPFScreen.cs" />
     <Compile Include="src\upload\CEFBrowser.cs" />
     <Compile Include="src\upload\GfycatUpload.cs" />
     <Compile Include="src\upload\Upload.cs" />

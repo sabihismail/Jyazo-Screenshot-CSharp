@@ -1,4 +1,6 @@
-﻿using System;
+﻿using ScreenShot.src.tools;
+using System;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -11,6 +13,8 @@ namespace ScreenShot.src.capture
     {
         public System.Drawing.Rectangle? CapturedArea;
 
+        private ScreenGraph screenGraph = ScreenGraph.Generate();
+        private Point mousePosition;
         private Rectangle rect;
 
         private int startX;
@@ -43,14 +47,17 @@ namespace ScreenShot.src.capture
 
         private void Canvas_OnMouseMove(object sender, MouseEventArgs e)
         {
-            if (e.LeftButton == MouseButtonState.Released || rect == null) return;
+            mousePosition = e.GetPosition(canvas);
 
-            var pos = e.GetPosition(canvas);
+            if (e.LeftButton == MouseButtonState.Released || rect == null)
+            {
+                return;
+            }
 
-            var smallerX = Math.Min(startX, (int) pos.X);
-            var largerX = Math.Max(startX, (int)pos.X);
-            var smallerY = Math.Min(startY, (int)pos.Y);
-            var largerY = Math.Max(startY, (int)pos.Y);
+            var smallerX = Math.Min(startX, (int)mousePosition.X);
+            var largerX = Math.Max(startX, (int)mousePosition.X);
+            var smallerY = Math.Min(startY, (int)mousePosition.Y);
+            var largerY = Math.Max(startY, (int)mousePosition.Y);
 
             rect.Width = largerX - smallerX;
             rect.Height = largerY - smallerY;
@@ -71,12 +78,38 @@ namespace ScreenShot.src.capture
             Close();
         }
 
+        private void Canvas_MouseLeave(object sender, MouseEventArgs e)
+        {
+            var closest = screenGraph.GetClosest(mousePosition);
+        }
+
         protected override void OnKeyDown(KeyEventArgs e)
         {
             if (e.Key == Key.Escape)
             {
                 Close();
             }
+        }
+
+        private void Window_Loaded(object sender, RoutedEventArgs e)
+        {/*
+            System.Windows.Forms.Screen leftScreen = null;
+            var bounds = new System.Drawing.Rectangle(0, 0, 0, 0);
+            foreach (var screen in System.Windows.Forms.Screen.AllScreens)
+            {
+                if (leftScreen == null || screen.Bounds.Left < leftScreen.Bounds.Left)
+                {
+                    leftScreen = screen;
+                }
+
+                bounds.Width += screen.Bounds.Width;
+                bounds.Height = Math.Max(bounds.Height, screen.Bounds.Height);
+            }
+
+            Left = leftScreen.Bounds.Left;
+            Top = leftScreen.Bounds.Top;
+            Width = leftScreen.Bounds.Width;
+            Height = leftScreen.Bounds.Height;*/
         }
     }
 }

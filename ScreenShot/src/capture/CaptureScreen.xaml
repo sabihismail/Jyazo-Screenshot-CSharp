@@ -13,6 +13,6 @@
         <SolidColorBrush Color="Gray" Opacity="0.01"/>
     </Window.Background>
     <Grid>
-        <Canvas x:Name="canvas" Background="Transparent" MouseDown="Canvas_OnMouseDown" MouseUp="Canvas_OnMouseUp" MouseMove="Canvas_OnMouseMove" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"></Canvas>
+        <Canvas x:Name="canvas" Background="Transparent" MouseDown="Canvas_OnMouseDown" MouseUp="Canvas_OnMouseUp" MouseMove="Canvas_OnMouseMove" MouseLeave="Canvas_MouseLeave" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"></Canvas>
     </Grid>
 </Window>
