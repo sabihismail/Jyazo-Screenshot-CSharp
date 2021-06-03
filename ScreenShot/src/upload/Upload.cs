@@ -2,7 +2,6 @@
 using System.Diagnostics;
 using System.IO;
 using System.Media;
-using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
@@ -15,9 +14,15 @@ namespace ScreenShot.src.upload
 {
     public static class Upload
     {
-        public static void UploadFile(string file, Settings settings, Config config)
+        public static async void UploadFile(string file, Settings settings, Config config)
         {
-            var result = UploadToServer(file, config);
+            if (string.IsNullOrWhiteSpace(config.Server) || (!config.EnableOAuth2 && string.IsNullOrWhiteSpace(config.ServerPassword)))
+            {
+                Logging.Log($"Configuration Error: User inputted server url or server password is invalid.");
+                return;
+            }
+
+            var result = await UploadToServer(file, config);
 
             if (string.IsNullOrWhiteSpace(result)) return;
 
@@ -41,19 +46,7 @@ namespace ScreenShot.src.upload
             });
         }
 
-        private static void PlaySound()
-        {
-            Task.Run(() =>
-            {
-                using (var stream = Application.GetResourceStream(new Uri("/resources/sounds/sound.wav", UriKind.Relative))?.Stream)
-                {
-                    var notificationSound = new SoundPlayer(stream);
-                    notificationSound.PlaySync();
-                }
-            });
-        }
-
-        private static string UploadToServer(string file, Config config)
+        private static async Task<string> UploadToServer(string file, Config config)
         {
             using (var client = new CookieHttpClient(config))
             using (var formData = new MultipartFormDataContent())
@@ -75,7 +68,7 @@ namespace ScreenShot.src.upload
                 {
                     if (!string.IsNullOrWhiteSpace(config.ServerPassword))
                     {
-                        formData.Headers.Add("upload_password", config.ServerPassword);
+                        formData.Headers.Add("uploadpassword", config.ServerPassword);
                     }
                 }
                 else
@@ -83,12 +76,12 @@ namespace ScreenShot.src.upload
                     server = JoinURL(server, Constants.API_ENDPOINT_UPLOAD_SCREENSHOT);
                 }
 
-                using (var httpResponse = client.PostAsync(server, formData))
+                using (var httpResponse = await client.PostAsync(server, formData))
                 {
                     var resultStr = "";
                     try
                     {
-                        resultStr = httpResponse.Result.Content.ReadAsStringAsync().Result;
+                        resultStr = await httpResponse.Content.ReadAsStringAsync();
                     }
                     catch
                     {
@@ -110,6 +103,18 @@ namespace ScreenShot.src.upload
                     return result.Output;
                 }
             }
+        }
+
+        private static void PlaySound()
+        {
+            Task.Run(() =>
+            {
+                using (var stream = Application.GetResourceStream(new Uri("/resources/sounds/sound.wav", UriKind.Relative))?.Stream)
+                {
+                    var notificationSound = new SoundPlayer(stream);
+                    notificationSound.PlaySync();
+                }
+            });
         }
 
         public class ServerResponse

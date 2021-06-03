@@ -37,6 +37,7 @@ namespace ScreenShot.views
 
             ConfigureTaskbar();
             ConfigureShortcuts();
+
             WindowInformation.BeginObservingWindows();
         }
 
@@ -62,23 +63,24 @@ namespace ScreenShot.views
                 imagePressed.Remove(key);
                 gifPressed.Remove(key);
             };
+
             globalKeyboardHook.KeyboardPressed += (sender, e) =>
             {
                 var key = KeyInterop.KeyFromVirtualKey(e.KeyboardData.VirtualCode);
 
                 if (CheckKeyboardShortcut(key, settings.CaptureImageShortcutKeys, ref imagePressed))
                 {
-                    TryInstatiateCaptureImage();
+                    TryInstantiateCaptureImage();
                 }
 
                 if (CheckKeyboardShortcut(key, settings.CaptureGIFShortcutKeys, ref gifPressed))
                 {
-                    TryInstatiateCaptureGIF();
+                    TryInstantiateCaptureGIF();
                 }
             };
         }
 
-        private void TryInstatiateCaptureImage()
+        private void TryInstantiateCaptureImage()
         {
             if (imageActive != 0) return;
 
@@ -91,7 +93,7 @@ namespace ScreenShot.views
             Interlocked.Decrement(ref imageActive);
         }
 
-        private void TryInstatiateCaptureGIF()
+        private void TryInstantiateCaptureGIF()
         {
             if (gifActive != 0) return;
 
@@ -212,7 +214,12 @@ namespace ScreenShot.views
                 return;
             }
 
-            WebBrowserUtil.CheckIfOAuth2CredentialsValid(config, callback);
+            WebBrowserUtil.IsfOAuth2CredentialsValid(config, callback);
+        }
+
+        private void Application_Exit(object sender, System.Windows.ExitEventArgs e)
+        {
+            taskbarIcon.Dispose();
         }
     }
 }

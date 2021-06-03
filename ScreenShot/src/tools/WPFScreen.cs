@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Forms;
 using System.Windows.Interop;
@@ -11,6 +12,21 @@ namespace ScreenShot.src.tools
     // Retreived from https://stackoverflow.com/a/2118993/10887184
     public class WPFScreen
     {
+        public static WPFScreen Primary => new WPFScreen(Screen.PrimaryScreen);
+
+        public Rect DeviceBounds => GetRect(screen.Bounds);
+
+        public Rect WorkingArea => GetRect(screen.WorkingArea);
+
+        public bool IsPrimary => screen.Primary;
+
+        public string DeviceName => screen.DeviceName;
+
+        private readonly Screen screen;
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool MoveWindow(IntPtr hWnd, int X, int Y, int nWidth, int nHeight, bool bRepaint);
+
         public static IEnumerable<WPFScreen> AllScreens()
         {
             foreach (Screen screen in Screen.AllScreens)
@@ -31,6 +47,7 @@ namespace ScreenShot.src.tools
             WindowInteropHelper windowInteropHelper = new WindowInteropHelper(window);
             Screen screen = Screen.FromHandle(windowInteropHelper.Handle);
             WPFScreen wpfScreen = new WPFScreen(screen);
+
             return wpfScreen;
         }
 
@@ -47,26 +64,16 @@ namespace ScreenShot.src.tools
             return wpfScreen;
         }
 
-        public static WPFScreen Primary
+        public void MoveWindow(Window window)
         {
-            get { return new WPFScreen(Screen.PrimaryScreen); }
-        }
+            var windowInteropHelper = new WindowInteropHelper(window);
 
-        private readonly Screen screen;
+            MoveWindow(windowInteropHelper.Handle, (int)DeviceBounds.Left, (int)DeviceBounds.Top, (int)DeviceBounds.Width, (int)DeviceBounds.Height, false);
+        }
 
         internal WPFScreen(Screen screen)
         {
             this.screen = screen;
-        }
-
-        public Rect DeviceBounds
-        {
-            get { return GetRect(screen.Bounds); }
-        }
-
-        public Rect WorkingArea
-        {
-            get { return GetRect(screen.WorkingArea); }
         }
 
         private Rect GetRect(Rectangle value)
@@ -79,16 +86,6 @@ namespace ScreenShot.src.tools
                 Width = value.Width,
                 Height = value.Height
             };
-        }
-
-        public bool IsPrimary
-        {
-            get { return screen.Primary; }
-        }
-
-        public string DeviceName
-        {
-            get { return screen.DeviceName; }
         }
     }
 }

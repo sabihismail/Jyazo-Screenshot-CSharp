@@ -42,6 +42,10 @@ namespace ScreenShot.views
 
             ChkEnablePrintScreen.IsChecked = settings.EnablePrintScreen;
             ChkPlaySound.IsChecked = settings.EnableSound;
+
+            ChkAutomaticallySaveCapturedImagesToDisk_OnClick(null, null);
+            ChkEnableImageShortcut_OnClick(null, null);
+            ChkEnableGIFShortcut_OnClick(null, null);
         }
 
         private void ChkAutomaticallySaveCapturedImagesToDisk_OnClick(object sender, RoutedEventArgs e)
@@ -197,10 +201,10 @@ namespace ScreenShot.views
         {
             settings.SaveSettings(IsChecked(ChkEnableGIFCapture),
                 IsChecked(ChkAutomaticallySaveCapturedImagesToDisk),
-                TxtSaveAllCapturedImages.Text,
+                TxtSaveAllCapturedImages.Text.Trim(),
                 IsChecked(ChkEnableImageShortcut),
                 imageShortcutKeycodes,
-                IsChecked(ChkEnableGIFCapture),
+                IsChecked(ChkEnableGIFShortcut),
                 gifShortcutKeycodes,
                 IsChecked(ChkEnablePrintScreen),
                 IsChecked(ChkPlaySound));
@@ -211,6 +215,16 @@ namespace ScreenShot.views
         private void BtnAdvancedSettings_OnClick(object sender, RoutedEventArgs e)
         {
             var configWindow = new ConfigWindow(config);
+
+            configWindow.Closed += (sender2, e2) =>
+            {
+                WindowState = WindowState.Normal;
+            };
+
+            configWindow.Loaded += (sender2, e2) =>
+            {
+                WindowState = WindowState.Minimized;
+            };
 
             configWindow.Show();
         }

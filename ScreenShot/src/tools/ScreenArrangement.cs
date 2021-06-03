@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Windows;
 
 namespace ScreenShot.src.tools
@@ -40,14 +39,14 @@ namespace ScreenShot.src.tools
 
         public ScreenGraph GetClosest(Point point)
         {
-            var axis = Util.MinObject(point.X, Axis.X, point.Y, Axis.Y);
+            var axis = GenericUtils.MinObject(point.X, Axis.X, point.Y, Axis.Y);
 
             var left = GetDistanceFromPointToWindow(point, Left, axis);
             var top = GetDistanceFromPointToWindow(point, Top, axis);
             var right = GetDistanceFromPointToWindow(point, Right, axis);
             var bottom = GetDistanceFromPointToWindow(point, Bottom, axis);
 
-            var newGraph = Util.MinObjectList(
+            var newGraph = GenericUtils.MinObjectList(
                 Tuple.Create(left, Left),
                 Tuple.Create(top, Top),
                 Tuple.Create(right, Right),

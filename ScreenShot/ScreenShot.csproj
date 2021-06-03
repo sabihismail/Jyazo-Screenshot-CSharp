@@ -85,19 +85,20 @@
     </ApplicationDefinition>
     <Compile Include="src\capture\Capture.cs" />
     <Compile Include="src\capture\CaptureGIF.cs" />
-    <Compile Include="src\capture\CaptureGIFWindow.xaml.cs">
+    <Compile Include="views\capture\CaptureGIFWindow.xaml.cs">
       <DependentUpon>CaptureGIFWindow.xaml</DependentUpon>
     </Compile>
     <Compile Include="src\capture\CaptureImage.cs" />
     <Compile Include="src\tools\GIFWriter.cs" />
     <Compile Include="src\settings\Config.cs" />
-    <Compile Include="src\tools\FileUtils.cs" />
-    <Compile Include="src\capture\CaptureScreen.xaml.cs">
+    <Compile Include="src\tools\util\FileUtils.cs" />
+    <Compile Include="views\capture\CaptureScreen.xaml.cs">
       <DependentUpon>CaptureScreen.xaml</DependentUpon>
     </Compile>
     <Compile Include="src\tools\GlobalKeyboardHook.cs" />
+    <Compile Include="src\tools\GlobalMouseHook.cs" />
     <Compile Include="src\tools\ScreenArrangement.cs" />
-    <Compile Include="src\tools\Util.cs" />
+    <Compile Include="src\tools\util\GenericUtils.cs" />
     <Compile Include="src\tools\WindowInformation.cs" />
     <Compile Include="src\tools\WPFScreen.cs" />
     <Compile Include="src\upload\CEFBrowser.cs" />
@@ -114,11 +115,11 @@
     <Compile Include="views\WebBrowserWindow.xaml.cs">
       <DependentUpon>WebBrowserWindow.xaml</DependentUpon>
     </Compile>
-    <Page Include="src\capture\CaptureGIFWindow.xaml">
+    <Page Include="views\capture\CaptureGIFWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="src\capture\CaptureScreen.xaml">
+    <Page Include="views\capture\CaptureScreen.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

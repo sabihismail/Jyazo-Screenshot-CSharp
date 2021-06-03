@@ -25,11 +25,9 @@ namespace ScreenShot.views
             GrdMain.Children.Add(cefBrowser.Browser);
         }
 
-        protected override void OnClosing(CancelEventArgs e)
+        private void Window_Closing(object sender, CancelEventArgs e)
         {
             cefBrowser.Close();
-
-            base.OnClosing(e);
         }
     }
 }

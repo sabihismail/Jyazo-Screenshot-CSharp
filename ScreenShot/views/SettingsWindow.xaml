@@ -4,7 +4,8 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
-        Title="SettingsWindow" Height="350" Width="800">
+        Title="SettingsWindow" Height="350" Width="800"
+        WindowStartupLocation="CenterScreen">
     <Grid>
         <StackPanel Orientation="Vertical" Margin="10">
             <CheckBox x:Name="ChkEnableGIFCapture" Content="Enable GIF Capture"></CheckBox>

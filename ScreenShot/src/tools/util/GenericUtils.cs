@@ -3,7 +3,7 @@ using System.Linq;
 
 namespace ScreenShot.src.tools
 {
-    public class Util
+    public class GenericUtils
     {
         public static T MinObject<T>(double v1, double v2, T r1, T r2) => MinObject(v1, r1, v2, r2);
 

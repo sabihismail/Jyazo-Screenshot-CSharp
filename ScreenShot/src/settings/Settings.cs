@@ -16,13 +16,13 @@ namespace ScreenShot.src
     {
         public bool EnableGIF = true;
         
-        public bool SaveAllImages = true;
+        public bool SaveAllImages = false;
         
         public string SaveDirectory = Constants.DEFAULT_ALL_IMAGES_FOLDER;
         
-        public bool EnableImageShortcut = true;
+        public bool EnableImageShortcut = false;
        
-        public bool EnableGIFShortcut = true;
+        public bool EnableGIFShortcut = false;
         
         public string CaptureImageShortcut = Constants.DEFAULT_IMAGE_SHORTCUT;
         
@@ -32,9 +32,9 @@ namespace ScreenShot.src
         
         public List<Key> CaptureGIFShortcutKeys = StringToKeys(Constants.DEFAULT_GIF_SHORTCUT);
         
-        public bool EnablePrintScreen = true;
+        public bool EnablePrintScreen = false;
 
-        public bool EnableSound = true;
+        public bool EnableSound = false;
 
         public Settings()
         {

@@ -3,9 +3,9 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:ScreenShot.views"
         mc:Ignorable="d"
-        Title="ConfigWindow" Height="282.322" Width="800">
+        Title="ConfigWindow" Height="310" Width="800"
+        WindowStartupLocation="CenterScreen">
     <Grid>
         <StackPanel Orientation="Vertical" Margin="10, 0">
             <StackPanel Orientation="Vertical" Margin="0, 6">
@@ -13,7 +13,7 @@
                 <TextBox x:Name="TxtServerEndpoint"></TextBox>
             </StackPanel>
 
-            <CheckBox x:Name="ChkOAuth2App" Content="OAuth2 Application" Click="CheckBox_Click"/>
+            <CheckBox x:Name="ChkOAuth2App" Content="OAuth2 Application" Click="ChkOAuth2App_Click"/>
             
             <StackPanel x:Name="InputPasswordInfo" Orientation="Vertical" Margin="0, 6">
                 <TextBlock Text="Server Endpoint Password (Leave blank if not applicable)"></TextBlock>

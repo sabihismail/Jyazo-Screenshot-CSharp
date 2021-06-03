@@ -9,7 +9,6 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using ScreenShot.src.tools;
 using ScreenShot.src.upload;
 using PixelFormat = System.Drawing.Imaging.PixelFormat;
 

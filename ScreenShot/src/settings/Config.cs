@@ -81,26 +81,6 @@ namespace ScreenShot.src
             }
         }
 
-        private List<CookieJSON> EncryptCookies(List<CookieJSON> oAuth2Cookies)
-        {
-            return oAuth2Cookies.Select(x => new CookieJSON(
-                Encryption.SimpleEncryptWithPassword(x.Name),
-                Encryption.SimpleEncryptWithPassword(x.Value),
-                Encryption.SimpleEncryptWithPassword(x.Path),
-                Encryption.SimpleEncryptWithPassword(x.Domain))
-            ).ToList();
-        }
-
-        private List<CookieJSON> DecryptCookies(List<CookieJSON> oAuth2Cookies)
-        {
-            return oAuth2Cookies.Select(x => new CookieJSON(
-                Encryption.SimpleDecryptWithPassword(x.Name),
-                Encryption.SimpleDecryptWithPassword(x.Value),
-                Encryption.SimpleDecryptWithPassword(x.Path),
-                Encryption.SimpleDecryptWithPassword(x.Domain))
-            ).ToList();
-        }
-
         private void UpdateConfig()
         {
             var configFile = Constants.CONFIG_FILE;
@@ -126,11 +106,30 @@ namespace ScreenShot.src
                     File.Delete(configFile);
                 }
 
-                Logging.Log("The config file is corrupted! All values have been reset.");
-                Logging.Log(e);
+                Logging.Log("The config file is corrupted! All values have been reset.\nError:" + e.Message);
 
                 SaveConfig(Server, ServerPassword, EnableGfycatUpload, GfycatClientID, GfycatClientSecret, EnableOAuth2, OAuth2Cookies);
             }
+        }
+
+        private List<CookieJSON> EncryptCookies(List<CookieJSON> oAuth2Cookies)
+        {
+            return oAuth2Cookies.Select(x => new CookieJSON(
+                Encryption.SimpleEncryptWithPassword(x.Name),
+                Encryption.SimpleEncryptWithPassword(x.Value),
+                Encryption.SimpleEncryptWithPassword(x.Path),
+                Encryption.SimpleEncryptWithPassword(x.Domain))
+            ).ToList();
+        }
+
+        private List<CookieJSON> DecryptCookies(List<CookieJSON> oAuth2Cookies)
+        {
+            return oAuth2Cookies.Select(x => new CookieJSON(
+                Encryption.SimpleDecryptWithPassword(x.Name),
+                Encryption.SimpleDecryptWithPassword(x.Value),
+                Encryption.SimpleDecryptWithPassword(x.Path),
+                Encryption.SimpleDecryptWithPassword(x.Domain))
+            ).ToList();
         }
 
         public void SetOAuth2Cookies(List<Cookie> cookiesDotNet)

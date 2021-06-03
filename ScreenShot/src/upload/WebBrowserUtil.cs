@@ -10,8 +10,7 @@ namespace ScreenShot.src.upload
 {
     public class WebBrowserUtil
     {
-
-        public static void CheckIfOAuth2CredentialsValid(Config config, Action callback)
+        public static async void IsfOAuth2CredentialsValid(Config config, Action callback)
         {
             var fullURL = JoinURL(config.Server, Constants.API_ENDPOINT_IS_AUTHORIZED);
 
@@ -27,12 +26,13 @@ namespace ScreenShot.src.upload
                 HttpResponseMessage response;
                 try
                 {
-                    response = client.SendAsync(request).Result;
+                    response = await client.SendAsync(request);
                 }
                 catch
                 {
                     Logging.Log("Could not connect to " + request + ". Exiting...");
-                    Application.Current.Shutdown();
+                    Application.Current.Shutdown(-1);
+
                     return;
                 }
 
@@ -74,6 +74,11 @@ namespace ScreenShot.src.upload
                     };
 
                     browserWindow.Show();
+                }
+                else
+                {
+                    Logging.Log("Unsupported non redirect OAuth2 endpoint.");
+                    Application.Current.Shutdown();
                 }
             }
         }

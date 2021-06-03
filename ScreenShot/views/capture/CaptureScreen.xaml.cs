@@ -1,6 +1,6 @@
 ﻿using ScreenShot.src.tools;
 using System;
-using System.Linq;
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -11,10 +11,10 @@ namespace ScreenShot.src.capture
 {
     public partial class CaptureScreen
     {
+        private readonly GlobalMouseHook mouseHook = new GlobalMouseHook();
+
         public System.Drawing.Rectangle? CapturedArea;
 
-        private ScreenGraph screenGraph = ScreenGraph.Generate();
-        private Point mousePosition;
         private Rectangle rect;
 
         private int startX;
@@ -25,6 +25,14 @@ namespace ScreenShot.src.capture
             InitializeComponent();
 
             Cursor = Cursors.Cross;
+
+            mouseHook.MouseUpEvent += (sender2, mouseEvent) =>
+            {
+                Canvas_OnMouseUp(null, null);
+            };
+            mouseHook.SetHook();
+
+            WindowState = WindowState.Maximized;
         }
 
         private void Canvas_OnMouseDown(object sender, MouseButtonEventArgs e)
@@ -47,12 +55,14 @@ namespace ScreenShot.src.capture
 
         private void Canvas_OnMouseMove(object sender, MouseEventArgs e)
         {
-            mousePosition = e.GetPosition(canvas);
-
-            if (e.LeftButton == MouseButtonState.Released || rect == null)
+            if (e.LeftButton == MouseButtonState.Released)
             {
-                return;
+                if (rect == null) return;
+
+                Canvas_OnMouseUp(null, null);
             }
+
+            var mousePosition = e.GetPosition(canvas);
 
             var smallerX = Math.Min(startX, (int)mousePosition.X);
             var largerX = Math.Max(startX, (int)mousePosition.X);
@@ -68,6 +78,12 @@ namespace ScreenShot.src.capture
 
         private void Canvas_OnMouseUp(object sender, MouseButtonEventArgs e)
         {
+            if (rect == null)
+            {
+                Close();
+                return;
+            }
+
             var pos = rect.PointToScreen(new Point(0, 0));
 
             var x = (int)pos.X;
@@ -80,10 +96,16 @@ namespace ScreenShot.src.capture
 
         private void Canvas_MouseLeave(object sender, MouseEventArgs e)
         {
-            var closest = screenGraph.GetClosest(mousePosition);
+            if (rect != null)
+            {
+                return;
+            }
+
+            var screen = WPFScreen.GetScreenFrom(mouseHook.Point);
+            screen.MoveWindow(this);
         }
 
-        protected override void OnKeyDown(KeyEventArgs e)
+        private void Window_KeyDown(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Escape)
             {
@@ -91,25 +113,9 @@ namespace ScreenShot.src.capture
             }
         }
 
-        private void Window_Loaded(object sender, RoutedEventArgs e)
-        {/*
-            System.Windows.Forms.Screen leftScreen = null;
-            var bounds = new System.Drawing.Rectangle(0, 0, 0, 0);
-            foreach (var screen in System.Windows.Forms.Screen.AllScreens)
-            {
-                if (leftScreen == null || screen.Bounds.Left < leftScreen.Bounds.Left)
-                {
-                    leftScreen = screen;
-                }
-
-                bounds.Width += screen.Bounds.Width;
-                bounds.Height = Math.Max(bounds.Height, screen.Bounds.Height);
-            }
-
-            Left = leftScreen.Bounds.Left;
-            Top = leftScreen.Bounds.Top;
-            Width = leftScreen.Bounds.Width;
-            Height = leftScreen.Bounds.Height;*/
+        private void Window_Closing(object sender, CancelEventArgs e)
+        {
+            mouseHook.UnHook();
         }
     }
 }

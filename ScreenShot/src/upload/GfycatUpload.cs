@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using ScreenShot.src.tools;
@@ -13,13 +13,13 @@ namespace ScreenShot.src.upload
     [Obsolete("Not used any more since gif capture is more efficient now", true)]
     public class GfycatUpload
     {
-        private static string API_ENDPOINT = "https://api.gfycat.com/v1/";
-        private static string API_ENDPOINT_POST_KEY = API_ENDPOINT + "gfycats";
-        private static string API_ENDPOINT_GET_STATUS = API_ENDPOINT + "gfycats/fetch/status/";
+        private const string API_ENDPOINT = "https://api.gfycat.com/v1/";
+        private const string API_ENDPOINT_POST_KEY = API_ENDPOINT + "gfycats";
+        private const string API_ENDPOINT_GET_STATUS = API_ENDPOINT + "gfycats/fetch/status/";
 
-        private static String URL_START = "https://gfycat.com/";
+        private const string URL_START = "https://gfycat.com/";
 
-        private Config config;
+        private readonly Config config;
 
         public string URL;
 
@@ -27,7 +27,7 @@ namespace ScreenShot.src.upload
         {
             this.config = config;
 
-            var oAuthKey = GenerateOAuthKey();
+            var oAuthKey = GenerateOAuthKey().Result;
             var uploadInformation = RetrieveUploadInformation(oAuthKey);
 
             URL = URL_START + Upload(uploadInformation, file);
@@ -43,7 +43,7 @@ namespace ScreenShot.src.upload
             throw new NotImplementedException();
         }
 
-        private string GenerateOAuthKey()
+        private async Task<string> GenerateOAuthKey()
         {
             try
             {
@@ -58,20 +58,20 @@ namespace ScreenShot.src.upload
                 using (var content = new FormUrlEncodedContent(data))
                 {
                     content.Headers.ContentType = new MediaTypeHeaderValue("application/x-www-form-urlencoded");
-                    
-                    var response = client.PostAsync("https://api.gfycat.com/v1/oauth/token", content).Result;
-                    var jsonStr = response.Content.ReadAsStringAsync().Result;
 
-                    var json = JsonConvert.DeserializeObject<OAuthResponse>(jsonStr);
-
-                    if (!string.IsNullOrWhiteSpace(json.AccessToken))
+                    using (var response = await client.PostAsync("https://api.gfycat.com/v1/oauth/token", content))
                     {
-                        return json.AccessToken;
+                        var jsonStr = await response.Content.ReadAsStringAsync();
+                        var json = JsonConvert.DeserializeObject<OAuthResponse>(jsonStr);
+
+                        if (!string.IsNullOrWhiteSpace(json.AccessToken))
+                        {
+                            return json.AccessToken;
+                        }
+
+                        Logging.Log($"Gfycat Failed Acquiring Access Token: Error Code: {json.ErrorMessage.Code}\nError Message: \"{json.ErrorMessage.Description}\"");
+                        return null;
                     }
-
-                    Logging.Log($"Gfycat Failed Acquiring Access Token: Error Code: {json.ErrorMessage.Code}\nError Message: \"{json.ErrorMessage.Description}\"");
-                    return null;
-
                 }
             }
             catch (IOException e)
