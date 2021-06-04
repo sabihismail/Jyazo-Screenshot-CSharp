@@ -76,32 +76,34 @@ namespace ScreenShot.src.upload
                     server = JoinURL(server, Constants.API_ENDPOINT_UPLOAD_SCREENSHOT);
                 }
 
-                using (var httpResponse = await client.PostAsync(server, formData))
+                try
                 {
-                    var resultStr = "";
-                    try
+                    using (var httpResponse = await client.PostAsync(server, formData))
                     {
-                        resultStr = await httpResponse.Content.ReadAsStringAsync();
-                    }
-                    catch
-                    {
-                    }
+                        var resultStr = await httpResponse.Content.ReadAsStringAsync();
 
-                    var result = JsonConvert.DeserializeObject<ServerResponse>(resultStr);
-                    if (result == null)
-                    {
-                        Logging.Log("No response from server.");
-                        return "";
-                    }
+                        var result = JsonConvert.DeserializeObject<ServerResponse>(resultStr);
+                        if (result == null)
+                        {
+                            Logging.Log("No response from server.");
+                            return "";
+                        }
 
-                    if (!result.Success)
-                    {
-                        Logging.Log("The server responded with:\n" + result.Error);
-                        return "";
-                    }
+                        if (!result.Success)
+                        {
+                            Logging.Log("The server responded with:\n" + result.Error);
+                            return "";
+                        }
 
-                    return result.Output;
+                        return result.Output;
+                    }
                 }
+                catch (Exception e)
+                {
+                    Logging.Log($"Could not upload screenShot to URL: {server}.\nError: " + e.ToString());
+                }
+
+                return "";
             }
         }
 

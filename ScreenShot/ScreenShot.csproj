@@ -106,13 +106,13 @@
     <Compile Include="src\upload\Upload.cs" />
     <Compile Include="src\upload\Util.cs" />
     <Compile Include="src\upload\WebBrowserUtil.cs" />
-    <Compile Include="views\ConfigWindow.xaml.cs">
+    <Compile Include="views\windows\ConfigWindow.xaml.cs">
       <DependentUpon>ConfigWindow.xaml</DependentUpon>
     </Compile>
-    <Compile Include="views\SettingsWindow.xaml.cs">
+    <Compile Include="views\windows\SettingsWindow.xaml.cs">
       <DependentUpon>SettingsWindow.xaml</DependentUpon>
     </Compile>
-    <Compile Include="views\WebBrowserWindow.xaml.cs">
+    <Compile Include="views\windows\WebBrowserWindow.xaml.cs">
       <DependentUpon>WebBrowserWindow.xaml</DependentUpon>
     </Compile>
     <Page Include="views\capture\CaptureGIFWindow.xaml">
@@ -123,7 +123,7 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="views\ConfigWindow.xaml">
+    <Page Include="views\windows\ConfigWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -135,11 +135,11 @@
       <DependentUpon>App.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
-    <Page Include="views\SettingsWindow.xaml">
+    <Page Include="views\windows\SettingsWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="views\WebBrowserWindow.xaml">
+    <Page Include="views\windows\WebBrowserWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

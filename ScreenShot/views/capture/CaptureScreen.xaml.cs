@@ -113,6 +113,12 @@ namespace ScreenShot.src.capture
             }
         }
 
+        private void Window_Deactivated(object sender, EventArgs e)
+        {
+            Topmost = false;
+            Topmost = true;
+        }
+
         private void Window_Closing(object sender, CancelEventArgs e)
         {
             mouseHook.UnHook();
