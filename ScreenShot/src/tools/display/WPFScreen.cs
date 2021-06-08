@@ -6,15 +6,16 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Forms;
 using System.Windows.Interop;
+// ReSharper disable UnusedMember.Global
 
-namespace ScreenShot.src.tools
+namespace ScreenShot.src.tools.display
 {
-    // Retreived from https://stackoverflow.com/a/2118993/10887184
+    // Retrieved from https://stackoverflow.com/a/2118993/10887184
     public class WPFScreen
     {
-        public static WPFScreen Primary => new WPFScreen(Screen.PrimaryScreen);
+        private static WPFScreen Primary => new(Screen.PrimaryScreen);
 
-        public Rect DeviceBounds => GetRect(screen.Bounds);
+        private Rect DeviceBounds => GetRect(screen.Bounds);
 
         public Rect WorkingArea => GetRect(screen.WorkingArea);
 
@@ -25,14 +26,11 @@ namespace ScreenShot.src.tools
         private readonly Screen screen;
 
         [DllImport("user32.dll", SetLastError = true)]
-        private static extern bool MoveWindow(IntPtr hWnd, int X, int Y, int nWidth, int nHeight, bool bRepaint);
+        private static extern bool MoveWindow(IntPtr hWnd, int x, int y, int nWidth, int nHeight, bool bRepaint);
 
-        public static IEnumerable<WPFScreen> AllScreens()
+        private static IEnumerable<WPFScreen> AllScreens()
         {
-            foreach (Screen screen in Screen.AllScreens)
-            {
-                yield return new WPFScreen(screen);
-            }
+            return Screen.AllScreens.Select(screen => new WPFScreen(screen));
         }
 
         public static Tuple<WPFScreen, IEnumerable<WPFScreen>> AllScreensSeparated()
@@ -44,22 +42,22 @@ namespace ScreenShot.src.tools
         
         public static WPFScreen GetScreenFrom(Window window)
         {
-            WindowInteropHelper windowInteropHelper = new WindowInteropHelper(window);
-            Screen screen = Screen.FromHandle(windowInteropHelper.Handle);
-            WPFScreen wpfScreen = new WPFScreen(screen);
+            var windowInteropHelper = new WindowInteropHelper(window);
+            var screen = Screen.FromHandle(windowInteropHelper.Handle);
+            var wpfScreen = new WPFScreen(screen);
 
             return wpfScreen;
         }
 
         public static WPFScreen GetScreenFrom(System.Windows.Point point)
         {
-            int x = (int)Math.Round(point.X);
-            int y = (int)Math.Round(point.Y);
+            var x = (int)Math.Round(point.X);
+            var y = (int)Math.Round(point.Y);
 
             // are x,y device-independent-pixels ??
-            System.Drawing.Point drawingPoint = new System.Drawing.Point(x, y);
-            Screen screen = Screen.FromPoint(drawingPoint);
-            WPFScreen wpfScreen = new WPFScreen(screen);
+            var drawingPoint = new System.Drawing.Point(x, y);
+            var screen = Screen.FromPoint(drawingPoint);
+            var wpfScreen = new WPFScreen(screen);
 
             return wpfScreen;
         }
@@ -71,15 +69,15 @@ namespace ScreenShot.src.tools
             MoveWindow(windowInteropHelper.Handle, (int)DeviceBounds.Left, (int)DeviceBounds.Top, (int)DeviceBounds.Width, (int)DeviceBounds.Height, false);
         }
 
-        internal WPFScreen(Screen screen)
+        private WPFScreen(Screen screen)
         {
             this.screen = screen;
         }
 
-        private Rect GetRect(Rectangle value)
+        private static Rect GetRect(Rectangle value)
         {
             // should x, y, width, height be device-independent-pixels ??
-            return new Rect
+            return new()
             {
                 X = value.X,
                 Y = value.Y,

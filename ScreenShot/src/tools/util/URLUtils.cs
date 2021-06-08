@@ -2,10 +2,11 @@
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
+using ScreenShot.src.settings;
 
-namespace ScreenShot.src.upload
+namespace ScreenShot.src.tools.util
 {
-    public class Util
+    public static class URLUtils
     {
         public static string JoinURL(string path, string endpoint)
         {
@@ -23,8 +24,8 @@ namespace ScreenShot.src.upload
 
         public class CookieHttpClient : IDisposable
         {
-            public readonly HttpClient HttpClient;
-            private readonly HttpClientHandler Handler;
+            private readonly HttpClient httpClient;
+            private readonly HttpClientHandler handler;
 
             public CookieHttpClient(Config config, bool allowAutoRedirect = true)
             {
@@ -36,34 +37,34 @@ namespace ScreenShot.src.upload
                         cookieContainer.Add(cookie);
                     }
 
-                    Handler = new HttpClientHandler()
+                    handler = new HttpClientHandler
                     {
                         CookieContainer = cookieContainer,
                         AllowAutoRedirect = allowAutoRedirect
                     };
 
-                    HttpClient = new HttpClient(Handler);
+                    httpClient = new HttpClient(handler);
                 }
                 else
                 {
-                    HttpClient = new HttpClient();
+                    httpClient = new HttpClient();
                 }
             }
 
             public Task<HttpResponseMessage> PostAsync(string server, MultipartFormDataContent formData)
             {
-                return HttpClient.PostAsync(server, formData);
+                return httpClient.PostAsync(server, formData);
             }
 
             public Task<HttpResponseMessage> SendAsync(HttpRequestMessage request)
             {
-                return HttpClient.SendAsync(request);
+                return httpClient.SendAsync(request);
             }
 
             public void Dispose()
             {
-                HttpClient.Dispose();
-                Handler?.Dispose();
+                httpClient.Dispose();
+                handler?.Dispose();
             }
         }
     }

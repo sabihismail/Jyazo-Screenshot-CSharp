@@ -1,16 +1,16 @@
 ﻿using System;
 using WK.Libraries.BetterFolderBrowserNS;
 
-namespace ScreenShot.src.tools
+namespace ScreenShot.src.tools.util
 {
     public static class FileUtils
     {
-        public static string BrowseForDirectory(string title = "Select folder...", string RootFolder = null)
+        public static string BrowseForDirectory(string title = "Select folder...", string rootFolder = null)
         {
             var betterFolderBrowser = new BetterFolderBrowser
             {
                 Title = title,
-                RootFolder = RootFolder?.Replace("/", "\\"),
+                RootFolder = rootFolder?.Replace("/", "\\"),
                 Multiselect = false
             };
 

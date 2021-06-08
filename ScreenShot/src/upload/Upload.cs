@@ -7,8 +7,11 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using Newtonsoft.Json;
+using ScreenShot.src.settings;
 using ScreenShot.src.tools;
-using static ScreenShot.src.upload.Util;
+using ScreenShot.src.tools.display;
+using ScreenShot.src.tools.util;
+using static ScreenShot.src.tools.util.URLUtils;
 
 namespace ScreenShot.src.upload
 {
@@ -16,9 +19,9 @@ namespace ScreenShot.src.upload
     {
         public static async void UploadFile(string file, Settings settings, Config config)
         {
-            if (string.IsNullOrWhiteSpace(config.Server) || (!config.EnableOAuth2 && string.IsNullOrWhiteSpace(config.ServerPassword)))
+            if (string.IsNullOrWhiteSpace(config.Server) || !config.EnableOAuth2 && string.IsNullOrWhiteSpace(config.ServerPassword))
             {
-                Logging.Log($"Configuration Error: User inputted server url or server password is invalid.");
+                Logging.Log("Configuration Error: User inputted server url or server password is invalid.");
                 return;
             }
 
@@ -48,69 +51,63 @@ namespace ScreenShot.src.upload
 
         private static async Task<string> UploadToServer(string file, Config config)
         {
-            using (var client = new CookieHttpClient(config))
-            using (var formData = new MultipartFormDataContent())
+            using var client = new CookieHttpClient(config);
+            using var formData = new MultipartFormDataContent();
+            
+            var streamContent = new StreamContent(File.OpenRead(file));
+            streamContent.Headers.Add("Content-Type", FileUtils.GetContentType(Path.GetExtension(file)));
+            formData.Add(streamContent, "uploaded_image", Path.GetFileName(file));
+
+            var titleContent = new StringContent(!string.IsNullOrWhiteSpace(WindowInformation.ActiveWindow) ? WindowInformation.ActiveWindow : "", Encoding.UTF8);
+            formData.Add(titleContent, "title");
+
+            var server = config.Server;
+            if (!config.EnableOAuth2)
             {
-                var streamContent = new StreamContent(File.OpenRead(file));
-                streamContent.Headers.Add("Content-Type", FileUtils.GetContentType(Path.GetExtension(file)));
-                formData.Add(streamContent, "uploaded_image", Path.GetFileName(file));
-
-                var titleContent = new StringContent(!string.IsNullOrWhiteSpace(WindowInformation.ActiveWindow) ? WindowInformation.ActiveWindow : "", Encoding.UTF8);
-                formData.Add(titleContent, "title");
-
-                var server = config.Server;
-                if (!config.EnableOAuth2)
+                if (!string.IsNullOrWhiteSpace(config.ServerPassword))
                 {
-                    if (!string.IsNullOrWhiteSpace(config.ServerPassword))
-                    {
-                        formData.Headers.Add("uploadpassword", config.ServerPassword);
-                    }
+                    formData.Headers.Add("upload_password", config.ServerPassword);
                 }
-                else
+            }
+            else
+            {
+                server = JoinURL(server, Constants.API_ENDPOINT_UPLOAD_SCREENSHOT);
+            }
+
+            try
+            {
+                using var httpResponse = await client.PostAsync(server, formData);
+                    
+                var resultStr = await httpResponse.Content.ReadAsStringAsync();
+
+                var result = JsonConvert.DeserializeObject<ServerResponse>(resultStr);
+                if (result == null)
                 {
-                    server = JoinURL(server, Constants.API_ENDPOINT_UPLOAD_SCREENSHOT);
-                }
-
-                try
-                {
-                    using (var httpResponse = await client.PostAsync(server, formData))
-                    {
-                        var resultStr = await httpResponse.Content.ReadAsStringAsync();
-
-                        var result = JsonConvert.DeserializeObject<ServerResponse>(resultStr);
-                        if (result == null)
-                        {
-                            Logging.Log("No response from server.");
-                            return "";
-                        }
-
-                        if (!result.Success)
-                        {
-                            Logging.Log("The server responded with:\n" + result.Error);
-                            return "";
-                        }
-
-                        return result.Output;
-                    }
-                }
-                catch (Exception e)
-                {
-                    Logging.Log($"Could not upload screenShot to URL: {server}.\nError: " + e.ToString());
+                    Logging.Log("No response from server.");
+                    return "";
                 }
 
+                if (result.Success) return result.Output;
+                    
+                Logging.Log("The server responded with:\n" + result.Error);
                 return "";
             }
+            catch (Exception e)
+            {
+                Logging.Log($"Could not upload screenShot to URL: {server}.\nError: " + e);
+            }
+
+            return "";
         }
 
         private static void PlaySound()
         {
             Task.Run(() =>
             {
-                using (var stream = Application.GetResourceStream(new Uri("/resources/sounds/sound.wav", UriKind.Relative))?.Stream)
-                {
-                    var notificationSound = new SoundPlayer(stream);
-                    notificationSound.PlaySync();
-                }
+                using var stream = Application.GetResourceStream(new Uri("/resources/sounds/sound.wav", UriKind.Relative))?.Stream;
+                
+                var notificationSound = new SoundPlayer(stream);
+                notificationSound.PlaySync();
             });
         }
 

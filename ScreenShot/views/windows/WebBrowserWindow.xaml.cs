@@ -1,17 +1,16 @@
-﻿using CefSharp;
-using ScreenShot.src.upload;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
-using System.Windows;
+using CefSharp;
+using ScreenShot.src.tools;
 
-namespace ScreenShot.views
+namespace ScreenShot.views.windows
 {
-    public partial class WebBrowserWindow : Window
+    public partial class WebBrowserWindow
     {
         private readonly CEFBrowser cefBrowser;
 
-        public List<Cookie> Cookies => cefBrowser.Cookies;
+        private IEnumerable<Cookie> Cookies => cefBrowser.Cookies;
 
         public List<System.Net.Cookie> CookiesDotNet => Cookies.Select(x => new System.Net.Cookie(x.Name, x.Value, x.Path, x.Domain))
             .ToList();

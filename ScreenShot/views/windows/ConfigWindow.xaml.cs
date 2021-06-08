@@ -1,8 +1,8 @@
 ﻿using System.Windows;
 using System.Windows.Controls.Primitives;
-using ScreenShot.src;
+using ScreenShot.src.settings;
 
-namespace ScreenShot.views
+namespace ScreenShot.views.windows
 {
     public partial class ConfigWindow
     {
@@ -49,14 +49,7 @@ namespace ScreenShot.views
 
         private void ChkOAuth2App_Click(object sender, RoutedEventArgs e)
         {
-            if (IsChecked(ChkOAuth2App))
-            {
-                InputPasswordInfo.Visibility = Visibility.Collapsed;
-            }
-            else
-            {
-                InputPasswordInfo.Visibility = Visibility.Visible;
-            }
+            InputPasswordInfo.Visibility = IsChecked(ChkOAuth2App) ? Visibility.Collapsed : Visibility.Visible;
         }
 
         private void BtnSave_OnClick(object sender, RoutedEventArgs e)

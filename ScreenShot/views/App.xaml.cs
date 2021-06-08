@@ -3,15 +3,20 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
+using System.Net;
+using System.Net.Http;
 using System.Threading;
 using System.Windows.Forms;
 using System.Windows.Input;
 using CefSharp;
 using CefSharp.Wpf;
-using ScreenShot.src;
 using ScreenShot.src.capture;
+using ScreenShot.src.settings;
 using ScreenShot.src.tools;
-using ScreenShot.src.upload;
+using ScreenShot.src.tools.display;
+using ScreenShot.src.tools.hooks;
+using ScreenShot.views.windows;
+using static ScreenShot.src.tools.util.URLUtils;
 
 namespace ScreenShot.views
 {
@@ -19,15 +24,15 @@ namespace ScreenShot.views
     {
         private NotifyIcon taskbarIcon;
 
-        private readonly Settings settings = new Settings();
-        private readonly Config config = new Config();
+        private readonly Settings settings = new();
+        private readonly Config config = new();
 
         private GlobalKeyboardHook globalKeyboardHook;
 
-        private HashSet<Key> imagePressed = new HashSet<Key>();
+        private HashSet<Key> imagePressed = new();
         private int imageActive;
 
-        private HashSet<Key> gifPressed = new HashSet<Key>();
+        private HashSet<Key> gifPressed = new();
         private int gifActive;
 
         public App()
@@ -41,11 +46,11 @@ namespace ScreenShot.views
             WindowInformation.BeginObservingWindows();
         }
 
-        private void InitializeCEFSettings()
+        private static void InitializeCEFSettings()
         {
-            CefSettings cefSettings = new CefSettings
+            var cefSettings = new CefSettings
             {
-                UserAgent = Constants.USER_AGENT,
+                UserAgent = Constants.USER_AGENT
             };
 
             Cef.Initialize(cefSettings);
@@ -56,7 +61,7 @@ namespace ScreenShot.views
             if (settings.CaptureImageShortcutKeys.Count == 0 && settings.CaptureGIFShortcutKeys.Count == 0) return;
 
             globalKeyboardHook = new GlobalKeyboardHook();
-            globalKeyboardHook.KeyboardReleased += (sender, e) =>
+            globalKeyboardHook.KeyboardReleased += (_, e) =>
             {
                 var key = KeyInterop.KeyFromVirtualKey(e.KeyboardData.VirtualCode);
 
@@ -64,7 +69,7 @@ namespace ScreenShot.views
                 gifPressed.Remove(key);
             };
 
-            globalKeyboardHook.KeyboardPressed += (sender, e) =>
+            globalKeyboardHook.KeyboardPressed += (_, e) =>
             {
                 var key = KeyInterop.KeyFromVirtualKey(e.KeyboardData.VirtualCode);
 
@@ -106,7 +111,7 @@ namespace ScreenShot.views
             Interlocked.Decrement(ref gifActive);
         }
 
-        private static bool CheckKeyboardShortcut(Key key, List<Key> shortcutKeys, ref HashSet<Key> clickedList)
+        private static bool CheckKeyboardShortcut(Key key, ICollection<Key> shortcutKeys, ref HashSet<Key> clickedList)
         {
             if (!shortcutKeys.Contains(key)) return false;
 
@@ -119,45 +124,48 @@ namespace ScreenShot.views
         {
             var strip = new ContextMenuStrip();
 
-            var menuCaptureImage = new ToolStripMenuItem("Capture Image", null, (sender, args) =>
+            var menuCaptureImage = new ToolStripMenuItem("Capture Image", null, (_, _) =>
             {
-                void action()
+                void Action()
                 {
                     var captureImage = new CaptureImage(settings, config);
 
                     captureImage.Show();
                 }
 
-                CheckOAuth2(action);
+                CheckOAuth2(Action);
             });
 
-            var menuCaptureGIF = new ToolStripMenuItem("Capture GIF", null, (sender, args) =>
+            var menuCaptureGIF = new ToolStripMenuItem("Capture GIF", null, (_, _) =>
             {
-                void action()
+                void Action()
                 {
                     var captureGIF = new CaptureGIF(settings, config);
 
                     captureGIF.Show();
                 }
 
-                CheckOAuth2(action);
+                CheckOAuth2(Action);
             });
 
-            var menuViewAllImages = new ToolStripMenuItem("View All Images", null, (sender, args) =>
+            var menuViewAllImages = new ToolStripMenuItem("View All Images", null, (_, _) =>
             {
                 if (!settings.SaveAllImages) return;
 
                 Process.Start("explorer.exe", settings.SaveDirectory);
-            });
+            })
+            {
+                Enabled = settings.SaveAllImages
+            };
 
-            var menuSettings = new ToolStripMenuItem("Settings", null, (sender, args) =>
+            var menuSettings = new ToolStripMenuItem("Settings", null, (_, _) =>
             {
                 var settingsWindow = new SettingsWindow(settings, config);
 
                 settingsWindow.Show();
             });
 
-            var menuExit = new ToolStripMenuItem("Exit", null, (sender, args) =>
+            var menuExit = new ToolStripMenuItem("Exit", null, (_, _) =>
             {
                 Shutdown();
             });
@@ -170,31 +178,58 @@ namespace ScreenShot.views
             strip.Items.Add(new ToolStripSeparator());
             strip.Items.Add(menuExit);
 
-            strip.Items[0].Font = new Font(strip.Items[0].Font, strip.Items[0].Font.Style | System.Drawing.FontStyle.Bold);
-            strip.Items[1].Font = new Font(strip.Items[1].Font, strip.Items[1].Font.Style | System.Drawing.FontStyle.Bold);
+            strip.Items[0].Font = new Font(strip.Items[0].Font, strip.Items[0].Font.Style | FontStyle.Bold);
+            strip.Items[1].Font = new Font(strip.Items[1].Font, strip.Items[1].Font.Style | FontStyle.Bold);
 
             taskbarIcon = new NotifyIcon
             {
                 ContextMenuStrip = strip
             };
 
-            taskbarIcon.MouseClick += (sender, args) =>
+            taskbarIcon.MouseClick += (_, args) =>
             {
-                if (args.Button == MouseButtons.Right)
+                switch (args.Button)
                 {
-                    menuCaptureImage.Text = $"Capture Image ({settings.CaptureImageShortcut.Replace(" ", " + ")})";
-                    menuCaptureGIF.Text = $"Capture GIF ({settings.CaptureGIFShortcut.Replace(" ", " + ")})";
-                }
-                else if (args.Button == MouseButtons.Left)
-                {
-                    void action()
+                    case MouseButtons.Right:
+                        var imageShortcutText = settings.EnableImageShortcut
+                            ? settings.CaptureImageShortcut.Replace(" ", " + ")
+                            : ScreenShot.Properties.Resources.App_ConfigureTaskbar_Capture_Disabled;
+                        
+                        var gifShortcutText = settings.EnableGIFShortcut
+                            ? settings.CaptureGIFShortcut.Replace(" ", " + ")
+                            : ScreenShot.Properties.Resources.App_ConfigureTaskbar_Capture_Disabled;
+
+                        menuCaptureImage.Text =  string.Format(ScreenShot.Properties.Resources.App_ConfigureTaskbar_Capture_Image, imageShortcutText);
+                        menuCaptureGIF.Text  = string.Format(ScreenShot.Properties.Resources.App_ConfigureTaskbar_Capture_GIF, gifShortcutText);
+                        break;
+                    
+                    case MouseButtons.Left:
                     {
-                        var captureImage = new CaptureImage(settings, config);
+                        void Action()
+                        {
+                            var captureImage = new CaptureImage(settings, config);
 
-                        captureImage.Show();
+                            captureImage.Show();
+                        }
+
+                        CheckOAuth2(Action);
+                        break;
                     }
-
-                    CheckOAuth2(action);
+                    
+                    case MouseButtons.None:
+                        break;
+                    
+                    case MouseButtons.Middle:
+                        break;
+                    
+                    case MouseButtons.XButton1:
+                        break;
+                    
+                    case MouseButtons.XButton2:
+                        break;
+                    
+                    default:
+                        throw new ArgumentOutOfRangeException();
                 }
             };
 
@@ -214,12 +249,84 @@ namespace ScreenShot.views
                 return;
             }
 
-            WebBrowserUtil.IsfOAuth2CredentialsValid(config, callback);
+            CheckIfOAuth2CredentialsValid(config, callback);
         }
 
         private void Application_Exit(object sender, System.Windows.ExitEventArgs e)
         {
             taskbarIcon.Dispose();
+        }
+
+        private static async void CheckIfOAuth2CredentialsValid(Config config, Action callback)
+        {
+            var fullURL = JoinURL(config.Server, Constants.API_ENDPOINT_IS_AUTHORIZED);
+
+            using var client = new CookieHttpClient(config, false);
+            
+            var uri = new Uri(fullURL);
+            var request = new HttpRequestMessage
+            {
+                RequestUri = uri,
+                Method = HttpMethod.Get
+            };
+
+            HttpResponseMessage response;
+            try
+            {
+                response = await client.SendAsync(request);
+            }
+            catch
+            {
+                Logging.Log("Could not connect to " + request + ". Exiting...");
+                Current.Shutdown(-1);
+
+                return;
+            }
+
+            var status = (int)response.StatusCode;
+            if (response.StatusCode == HttpStatusCode.OK)
+            {
+                Current.Dispatcher.Invoke(callback);
+                return;
+            }
+
+            if (status is >= 300 and <= 399)
+            {
+                var redirectUri = response.Headers.Location;
+
+                response.Dispose();
+
+                string redirect;
+                if (redirectUri.IsAbsoluteUri)
+                {
+                    redirect = redirectUri.AbsoluteUri;
+                }
+                else
+                {
+                    redirect = uri.GetLeftPart(UriPartial.Authority) + redirectUri.OriginalString;
+                }
+
+                var browserWindow = new WebBrowserWindow(redirect, fullURL);
+
+                browserWindow.Closed += (_, _) =>
+                {
+                    var host = uri.Host;
+
+                    var cookies = browserWindow.CookiesDotNet
+                        .FindAll(x => x.Domain.Contains(host));
+
+                    config.SetOAuth2Cookies(cookies);
+
+                    Current.Dispatcher.Invoke(callback);
+                };
+
+                browserWindow.Show();
+            }
+            else
+            {
+                Logging.Log("Unsupported non redirect OAuth2 endpoint.");
+                Current.Shutdown();
+            }
         }
     }
 }

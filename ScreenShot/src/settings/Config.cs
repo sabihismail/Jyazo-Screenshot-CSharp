@@ -7,7 +7,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using ScreenShot.src.tools;
 
-namespace ScreenShot.src
+namespace ScreenShot.src.settings
 {
     public class Config
     {
@@ -15,7 +15,7 @@ namespace ScreenShot.src
 
         public string ServerPassword = "";
 
-        public bool EnableGfycatUpload = false;
+        public bool EnableGfycatUpload;
 
         public string GfycatClientID = "";
 
@@ -23,9 +23,9 @@ namespace ScreenShot.src
 
         public bool EnableOAuth2 = true;
 
-        public List<CookieJSON> OAuth2Cookies = new List<CookieJSON>();
+        public IEnumerable<Cookie> OAuth2CookiesDotNet => CookieJSONToCookie(oAuth2Cookies);
 
-        public List<Cookie> OAuth2CookiesDotNet => CookieJSONToCookie(OAuth2Cookies);
+        private List<CookieJSON> oAuth2Cookies = new();
 
         public Config()
         {
@@ -37,12 +37,12 @@ namespace ScreenShot.src
             }
             else
             {
-                SaveConfig(Server, ServerPassword, EnableGfycatUpload, GfycatClientID, GfycatClientSecret, EnableOAuth2, OAuth2Cookies);
+                SaveConfig(Server, ServerPassword, EnableGfycatUpload, GfycatClientID, GfycatClientSecret, EnableOAuth2, oAuth2Cookies);
             }
         }
 
         public void SaveConfig(string server, string serverPassword, bool enableGfycatUpload, string gfycatClientID, string gfycatClientSecret, bool enableOAuth2,
-            List<CookieJSON> oAuth2Cookies = null)
+            List<CookieJSON> oAuth2CookiesIn = null)
         {
             Server = server;
             ServerPassword = serverPassword;
@@ -52,7 +52,7 @@ namespace ScreenShot.src
             EnableOAuth2 = enableOAuth2;
             if (oAuth2Cookies != null)
             {
-                OAuth2Cookies = oAuth2Cookies;
+                oAuth2Cookies = oAuth2CookiesIn;
             }
 
             try
@@ -60,7 +60,7 @@ namespace ScreenShot.src
                 var configFile = Constants.CONFIG_FILE;
                 Directory.CreateDirectory(Path.GetDirectoryName(configFile) ?? throw new InvalidOperationException("configFile null"));
                 
-                var configContainer = new ConfigContainer()
+                var configContainer = new ConfigContainer
                 {
                     Server = !string.IsNullOrWhiteSpace(server) ? Encryption.SimpleEncryptWithPassword(server) : "",
                     ServerPassword = !string.IsNullOrWhiteSpace(serverPassword) ? Encryption.SimpleEncryptWithPassword(serverPassword) : "",
@@ -68,7 +68,7 @@ namespace ScreenShot.src
                     GfycatClientID = !string.IsNullOrWhiteSpace(gfycatClientID) ? Encryption.SimpleEncryptWithPassword(gfycatClientID) : "",
                     GfycatClientSecret = !string.IsNullOrWhiteSpace(gfycatClientSecret) ? Encryption.SimpleEncryptWithPassword(gfycatClientSecret) : "",
                     EnableOAuth2 = enableOAuth2,
-                    OAuth2Cookies = EncryptCookies(OAuth2Cookies),
+                    OAuth2Cookies = EncryptCookies(oAuth2Cookies)
                 };
 
                 var jsonStr = JsonConvert.SerializeObject(configContainer);
@@ -89,7 +89,16 @@ namespace ScreenShot.src
             {
                 var jsonStr = File.ReadAllText(configFile);
 
-                var configContainer = JsonConvert.DeserializeObject<ConfigContainer>(jsonStr);
+                var configContainer = JsonConvert.DeserializeObject<ConfigContainer>(jsonStr) ?? new ConfigContainer
+                {
+                    EnableGfycatUpload = EnableGfycatUpload,
+                    EnableOAuth2 = EnableOAuth2,
+                    GfycatClientID = GfycatClientID,
+                    GfycatClientSecret = GfycatClientSecret,
+                    OAuth2Cookies = oAuth2Cookies,
+                    Server = Server,
+                    ServerPassword = ServerPassword
+                };
 
                 Server = !string.IsNullOrWhiteSpace(configContainer.Server) ? Encryption.SimpleDecryptWithPassword(configContainer.Server) : "";
                 ServerPassword = !string.IsNullOrWhiteSpace(configContainer.ServerPassword) ? Encryption.SimpleDecryptWithPassword(configContainer.ServerPassword) : "";
@@ -97,7 +106,7 @@ namespace ScreenShot.src
                 GfycatClientID = !string.IsNullOrWhiteSpace(configContainer.GfycatClientID) ? Encryption.SimpleDecryptWithPassword(configContainer.GfycatClientID) : "";
                 GfycatClientSecret = !string.IsNullOrWhiteSpace(configContainer.GfycatClientSecret) ? Encryption.SimpleDecryptWithPassword(configContainer.GfycatClientSecret) : "";
                 EnableOAuth2 = configContainer.EnableOAuth2;
-                OAuth2Cookies = DecryptCookies(configContainer.OAuth2Cookies);
+                oAuth2Cookies = DecryptCookies(configContainer.OAuth2Cookies);
             }
             catch (Exception e)
             {
@@ -108,11 +117,32 @@ namespace ScreenShot.src
 
                 Logging.Log("The config file is corrupted! All values have been reset.\nError:" + e.Message);
 
-                SaveConfig(Server, ServerPassword, EnableGfycatUpload, GfycatClientID, GfycatClientSecret, EnableOAuth2, OAuth2Cookies);
+                SaveConfig(Server, ServerPassword, EnableGfycatUpload, GfycatClientID, GfycatClientSecret, EnableOAuth2, oAuth2Cookies);
             }
         }
 
-        private List<CookieJSON> EncryptCookies(List<CookieJSON> oAuth2Cookies)
+        public void SetOAuth2Cookies(IEnumerable<Cookie> cookiesDotNet)
+        {
+            var cookies = cookiesDotNet.Select(x => new CookieJSON(x.Name, x.Value, x.Path, x.Domain))
+                .ToList();
+
+            SaveConfig(Server, ServerPassword, EnableGfycatUpload, GfycatClientID, GfycatClientSecret, EnableOAuth2, cookies);
+        }
+
+        private static IEnumerable<Cookie> CookieJSONToCookie(IEnumerable<CookieJSON> cookies)
+        {
+            return cookies.Select(x => new Cookie(x.Name, x.Value, x.Path, x.Domain))
+                .ToList();
+        }
+
+        // ReSharper disable once UnusedMember.Local
+        private List<CookieJSON> CookieToCookieJSON(IEnumerable<Cookie> cookies)
+        {
+            return cookies.Select(x => new CookieJSON(x.Name, x.Value, x.Path, x.Domain))
+                .ToList();
+        }
+
+        private static List<CookieJSON> EncryptCookies(IEnumerable<CookieJSON> oAuth2Cookies)
         {
             return oAuth2Cookies.Select(x => new CookieJSON(
                 Encryption.SimpleEncryptWithPassword(x.Name),
@@ -122,7 +152,7 @@ namespace ScreenShot.src
             ).ToList();
         }
 
-        private List<CookieJSON> DecryptCookies(List<CookieJSON> oAuth2Cookies)
+        private static List<CookieJSON> DecryptCookies(IEnumerable<CookieJSON> oAuth2Cookies)
         {
             return oAuth2Cookies.Select(x => new CookieJSON(
                 Encryption.SimpleDecryptWithPassword(x.Name),
@@ -130,28 +160,6 @@ namespace ScreenShot.src
                 Encryption.SimpleDecryptWithPassword(x.Path),
                 Encryption.SimpleDecryptWithPassword(x.Domain))
             ).ToList();
-        }
-
-        public void SetOAuth2Cookies(List<Cookie> cookiesDotNet)
-        {
-            var cookies = cookiesDotNet.Select(x => new CookieJSON(x.Name, x.Value, x.Path, x.Domain))
-                .ToList();
-
-            SaveConfig(Server, ServerPassword, EnableGfycatUpload, GfycatClientID, GfycatClientSecret, EnableOAuth2, cookies);
-        }
-
-        /*
-        private List<CookieJSON> CookieToCookieJSON(List<Cookie> cookies)
-        {
-            return cookies.Select(x => new CookieJSON(x.Name, x.Value, x.Path, x.Domain))
-                .ToList();
-        }
-        */
-
-        private List<Cookie> CookieJSONToCookie(List<CookieJSON> cookies)
-        {
-            return cookies.Select(x => new Cookie(x.Name, x.Value, x.Path, x.Domain))
-                .ToList();
         }
 
         private class ConfigContainer
@@ -173,13 +181,13 @@ namespace ScreenShot.src
 
         public class CookieJSON
         {
-            public string Name { get; set; }
+            public string Name { get; }
 
-            public string Value { get; set; }
+            public string Value { get; }
 
-            public string Path { get; set; }
+            public string Path { get; }
 
-            public string Domain { get; set; }
+            public string Domain { get; }
 
             public CookieJSON(string name, string value, string path, string domain)
             {

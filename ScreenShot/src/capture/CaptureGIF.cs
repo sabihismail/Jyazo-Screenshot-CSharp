@@ -1,10 +1,13 @@
-﻿namespace ScreenShot.src.capture
+﻿using ScreenShot.src.settings;
+using ScreenShot.views.capture;
+
+namespace ScreenShot.src.capture
 {
     public class CaptureGIF : Capture
     {
         public CaptureGIF(Settings settings, Config config)
         {
-            Completed += (sender, args) =>
+            Completed += (_, args) =>
             {
                 var capturedArea = args.CapturedArea;
                 

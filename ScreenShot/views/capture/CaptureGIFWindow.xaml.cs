@@ -9,10 +9,11 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using ScreenShot.src.settings;
 using ScreenShot.src.upload;
 using PixelFormat = System.Drawing.Imaging.PixelFormat;
 
-namespace ScreenShot.src.capture
+namespace ScreenShot.views.capture
 {
     public partial class CaptureGIFWindow
     {
@@ -40,22 +41,22 @@ namespace ScreenShot.src.capture
             InitializeComponent();
 
             Width = capturedArea.Width + THICKNESS * 2;
-            Height = capturedArea.Height + THICKNESS * 2 + cancel.Height + BUTTON_GAP_Y;
+            Height = capturedArea.Height + THICKNESS * 2 + Cancel.Height + BUTTON_GAP_Y;
             Left = capturedArea.Left - THICKNESS;
             Top = capturedArea.Top - THICKNESS;
 
-            cancel.Source = cancelImage;
-            pause.Source = pauseImage;
-            complete.Source = completeImage;
+            Cancel.Source = cancelImage;
+            Pause.Source = pauseImage;
+            Complete.Source = completeImage;
             
-            Canvas.SetTop(pause, capturedArea.Height + BUTTON_GAP_Y);
-            Canvas.SetLeft(pause, capturedArea.Width / 2 - pauseImage.Width / 2);
+            Canvas.SetTop(Pause, capturedArea.Height + BUTTON_GAP_Y);
+            Canvas.SetLeft(Pause, capturedArea.Width / 2.0 - pauseImage.Width / 2);
 
-            Canvas.SetTop(cancel, Canvas.GetTop(pause));
-            Canvas.SetLeft(cancel, Canvas.GetLeft(pause) - BUTTON_GAP_X - cancelImage.Width / 2);
+            Canvas.SetTop(Cancel, Canvas.GetTop(Pause));
+            Canvas.SetLeft(Cancel, Canvas.GetLeft(Pause) - BUTTON_GAP_X - cancelImage.Width / 2);
 
-            Canvas.SetTop(complete, Canvas.GetTop(pause));
-            Canvas.SetLeft(complete, Canvas.GetLeft(pause) + BUTTON_GAP_X + completeImage.Width / 2);
+            Canvas.SetTop(Complete, Canvas.GetTop(Pause));
+            Canvas.SetLeft(Complete, Canvas.GetLeft(Pause) + BUTTON_GAP_X + completeImage.Width / 2);
 
             var rect = new System.Windows.Shapes.Rectangle
             {
@@ -65,7 +66,7 @@ namespace ScreenShot.src.capture
                 Height = capturedArea.Height + THICKNESS * 2
             };
 
-            canvas.Children.Add(rect);
+            Canvas.Children.Add(rect);
 
             Task.Run(() =>
             {
@@ -78,7 +79,7 @@ namespace ScreenShot.src.capture
             var file = Path.GetTempPath() + DateTimeOffset.Now.ToUnixTimeMilliseconds() + ".gif";
 
             var tasks = new List<Task>();
-            using (var gif = AnimatedGif.AnimatedGif.Create(file, GIF_GAP))
+            using (var gifCreator = AnimatedGif.AnimatedGif.Create(file, GIF_GAP))
             {
                 var i = 0;
                 while (enabled)
@@ -91,8 +92,9 @@ namespace ScreenShot.src.capture
                     var task = Task.Run(() =>
                     {
                         var bitmap = CaptureUsingBMP(capturedArea);
-
-                        gif.AddFrame(bitmap);
+                        
+                        // ReSharper disable once AccessToDisposedClosure
+                        gifCreator.AddFrame(bitmap);
 
                         Interlocked.Increment(ref i);
                     });
@@ -134,7 +136,7 @@ namespace ScreenShot.src.capture
         {
             paused = !paused;
 
-            pause.Source = paused ? resumeImage : pauseImage;
+            Pause.Source = paused ? resumeImage : pauseImage;
         }
 
         private void Complete_OnMouseLeftButtonDown(object sender, MouseButtonEventArgs e)

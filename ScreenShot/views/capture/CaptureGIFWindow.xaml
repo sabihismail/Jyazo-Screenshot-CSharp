@@ -1,4 +1,4 @@
-﻿<Window x:Class="ScreenShot.src.capture.CaptureGIFWindow"
+﻿<Window x:Class="ScreenShot.views.capture.CaptureGIFWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -13,10 +13,10 @@
         <SolidColorBrush Color="Transparent"/>
     </Window.Background>
     <Grid>
-        <Canvas x:Name="canvas" Background="Transparent" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
-            <Image x:Name="cancel" MouseLeftButtonDown="Cancel_OnMouseLeftButtonDown"></Image>
-            <Image x:Name="pause" MouseLeftButtonDown="Pause_OnMouseLeftButtonDown"></Image>
-            <Image x:Name="complete" MouseLeftButtonDown="Complete_OnMouseLeftButtonDown"></Image>
+        <Canvas x:Name="Canvas" Background="Transparent" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <Image x:Name="Cancel" MouseLeftButtonDown="Cancel_OnMouseLeftButtonDown"></Image>
+            <Image x:Name="Pause" MouseLeftButtonDown="Pause_OnMouseLeftButtonDown"></Image>
+            <Image x:Name="Complete" MouseLeftButtonDown="Complete_OnMouseLeftButtonDown"></Image>
         </Canvas>
     </Grid>
 </Window>

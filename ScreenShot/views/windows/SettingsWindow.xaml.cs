@@ -1,13 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
-using ScreenShot.src;
-using ScreenShot.src.tools;
+using ScreenShot.src.settings;
+using ScreenShot.src.tools.util;
 
-namespace ScreenShot.views
+namespace ScreenShot.views.windows
 {
     public partial class SettingsWindow
     {
@@ -16,8 +16,8 @@ namespace ScreenShot.views
 
         private static bool imageShortcutSelected;
         private static bool gifShortcutSelected;
-        private static List<Key> imageShortcutKeycodes = new List<Key>();
-        private static List<Key> gifShortcutKeycodes = new List<Key>();
+        private static List<Key> imageShortcutKeycodes = new();
+        private static List<Key> gifShortcutKeycodes = new();
 
         public SettingsWindow(Settings settings, Config config)
         {
@@ -26,6 +26,11 @@ namespace ScreenShot.views
 
             InitializeComponent();
 
+            ChkAutomaticallySaveCapturedImagesToDisk_OnClick(null, null);
+            ChkEnableImageShortcut_OnClick(null, null);
+            ChkEnableGIFShortcut_OnClick(null, null);
+
+            ChkEnableFullscreenCapture.IsChecked = settings.EnableFullscreenCapture;
             ChkEnableGIFCapture.IsChecked = settings.EnableGIF;
 
             ChkAutomaticallySaveCapturedImagesToDisk.IsChecked = settings.SaveAllImages;
@@ -42,10 +47,6 @@ namespace ScreenShot.views
 
             ChkEnablePrintScreen.IsChecked = settings.EnablePrintScreen;
             ChkPlaySound.IsChecked = settings.EnableSound;
-
-            ChkAutomaticallySaveCapturedImagesToDisk_OnClick(null, null);
-            ChkEnableImageShortcut_OnClick(null, null);
-            ChkEnableGIFShortcut_OnClick(null, null);
         }
 
         private void ChkAutomaticallySaveCapturedImagesToDisk_OnClick(object sender, RoutedEventArgs e)
@@ -148,24 +149,18 @@ namespace ScreenShot.views
             }
         }
 
-        private void UpdateShortcutText(List<Key> keys, TextBox textbox)
+        private static void UpdateShortcutText(IEnumerable<Key> keys, TextBox textBox)
         {
             var k = new KeyConverter();
 
-            var keysString = "";
-            foreach (var s in keys)
-            {
-                var keyStr = k.ConvertToString(s);
-
-                keysString += keyStr + " + ";
-            }
+            var keysString = keys.Select(s => k.ConvertToString(s)).Aggregate("", (current, keyStr) => current + keyStr + " + ");
 
             if (keysString.Length > 3)
             {
                 keysString = keysString.Substring(0, keysString.Length - 3);
             }
 
-            textbox.Text = keysString;
+            textBox.Text = keysString;
         }
         
         private void BtnClearGIFShortcut_OnClick(object sender, RoutedEventArgs e)
@@ -199,7 +194,8 @@ namespace ScreenShot.views
 
         private void BtnSave_OnClick(object sender, RoutedEventArgs e)
         {
-            settings.SaveSettings(IsChecked(ChkEnableGIFCapture),
+            settings.SaveSettings(IsChecked(ChkEnableFullscreenCapture),
+                IsChecked(ChkEnableGIFCapture),
                 IsChecked(ChkAutomaticallySaveCapturedImagesToDisk),
                 TxtSaveAllCapturedImages.Text.Trim(),
                 IsChecked(ChkEnableImageShortcut),
@@ -216,12 +212,12 @@ namespace ScreenShot.views
         {
             var configWindow = new ConfigWindow(config);
 
-            configWindow.Closed += (sender2, e2) =>
+            configWindow.Closed += (_, _) =>
             {
                 WindowState = WindowState.Normal;
             };
 
-            configWindow.Loaded += (sender2, e2) =>
+            configWindow.Loaded += (_, _) =>
             {
                 WindowState = WindowState.Minimized;
             };

@@ -3,26 +3,27 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Windows.Forms;
 using System.Windows.Input;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using ScreenShot.src.tools;
-using ScreenShot.views;
+using ScreenShot.views.windows;
 
-namespace ScreenShot.src
+namespace ScreenShot.src.settings
 {
     public class Settings
     {
+        public bool EnableFullscreenCapture = true;
+
         public bool EnableGIF = true;
         
-        public bool SaveAllImages = false;
+        public bool SaveAllImages;
         
         public string SaveDirectory = Constants.DEFAULT_ALL_IMAGES_FOLDER;
         
-        public bool EnableImageShortcut = false;
+        public bool EnableImageShortcut;
        
-        public bool EnableGIFShortcut = false;
+        public bool EnableGIFShortcut;
         
         public string CaptureImageShortcut = Constants.DEFAULT_IMAGE_SHORTCUT;
         
@@ -32,9 +33,9 @@ namespace ScreenShot.src
         
         public List<Key> CaptureGIFShortcutKeys = StringToKeys(Constants.DEFAULT_GIF_SHORTCUT);
         
-        public bool EnablePrintScreen = false;
+        public bool EnablePrintScreen;
 
-        public bool EnableSound = false;
+        public bool EnableSound;
 
         public Settings()
         {
@@ -44,7 +45,8 @@ namespace ScreenShot.src
             }
             else
             {
-                SaveSettings(EnableGIF, SaveAllImages, SaveDirectory, EnableImageShortcut, CaptureImageShortcutKeys, EnableGIFShortcut, CaptureGIFShortcutKeys, EnablePrintScreen, EnableSound);
+                SaveSettings(EnableFullscreenCapture, EnableGIF, SaveAllImages, SaveDirectory, EnableImageShortcut, CaptureImageShortcutKeys, EnableGIFShortcut, 
+                    CaptureGIFShortcutKeys, EnablePrintScreen, EnableSound);
             }
 
             if (File.Exists(Constants.CONFIG_FILE)) return;
@@ -55,8 +57,10 @@ namespace ScreenShot.src
             settingsWindow.Show();
         }
 
-        public void SaveSettings(bool enableGIF, bool saveAllImages, String saveDirectory, bool enableImageShortcut, List<Key> imageShortcutKeys, bool enableGIFShortcut, List<Key> gifShortcutKeys, bool enablePrintScreen, bool enableSound)
+        public void SaveSettings(bool enableFullscreenCapture, bool enableGIF, bool saveAllImages, string saveDirectory, bool enableImageShortcut, List<Key> imageShortcutKeys,
+            bool enableGIFShortcut, List<Key> gifShortcutKeys, bool enablePrintScreen, bool enableSound)
         {
+            EnableFullscreenCapture = enableFullscreenCapture;
             EnableGIF = enableGIF;
             SaveAllImages = saveAllImages;
             SaveDirectory = string.IsNullOrWhiteSpace(saveDirectory) ? Constants.DEFAULT_ALL_IMAGES_FOLDER : saveDirectory;
@@ -72,8 +76,8 @@ namespace ScreenShot.src
                 var settingsFile = Constants.SETTINGS_FILE;
                 Directory.CreateDirectory(Path.GetDirectoryName(settingsFile) ?? throw new InvalidOperationException("settingsFile null"));
                 
-                var KeysString = KeysToString(imageShortcutKeys);
-                var KeysString2 = KeysToString(gifShortcutKeys);
+                var imageKeys = KeysToString(imageShortcutKeys);
+                var gifKeys = KeysToString(gifShortcutKeys);
 
                 if (string.IsNullOrWhiteSpace(saveDirectory))
                 {
@@ -82,6 +86,7 @@ namespace ScreenShot.src
 
                 var settingsContainer = new SettingsContainer
                 {
+                    EnableFullscreenCapture = enableFullscreenCapture,
                     EnableGIF = enableGIF,
                     SaveAllImages = saveAllImages,
                     EnablePrintScreen = enablePrintScreen,
@@ -89,8 +94,8 @@ namespace ScreenShot.src
                     SaveDirectory = saveDirectory,
                     EnableImageShortcut = enableImageShortcut,
                     EnableGIFShortcut = enableGIFShortcut,
-                    ImageKeys = KeysString,
-                    GifKeys = KeysString2
+                    ImageKeys = imageKeys,
+                    GifKeys = gifKeys
                 };
 
                 var jsonStr = JsonConvert.SerializeObject(settingsContainer);
@@ -111,8 +116,21 @@ namespace ScreenShot.src
             {
                 var jsonStr = File.ReadAllText(settingsFile);
 
-                var configContainer = JsonConvert.DeserializeObject<SettingsContainer>(jsonStr);
+                var configContainer = JsonConvert.DeserializeObject<SettingsContainer>(jsonStr) ?? new SettingsContainer
+                {
+                    EnableFullscreenCapture = EnableFullscreenCapture,
+                    EnableGIF = EnableGIF,
+                    SaveAllImages = SaveAllImages,
+                    SaveDirectory = string.IsNullOrWhiteSpace(SaveDirectory) ? Constants.DEFAULT_ALL_IMAGES_FOLDER : SaveDirectory,
+                    EnableImageShortcut = EnableImageShortcut,
+                    EnableGIFShortcut = EnableGIFShortcut,
+                    ImageKeys = CaptureImageShortcut,
+                    GifKeys = CaptureGIFShortcut,
+                    EnablePrintScreen = EnablePrintScreen,
+                    EnableSound = EnableSound
+                };
 
+                EnableFullscreenCapture = configContainer.EnableFullscreenCapture;
                 EnableGIF = configContainer.EnableGIF;
                 SaveAllImages = configContainer.SaveAllImages;
                 EnablePrintScreen = configContainer.EnablePrintScreen;
@@ -134,7 +152,8 @@ namespace ScreenShot.src
 
                 Logging.Log("Settings file is corrupted. File deleted and will be set to default values.");
 
-                SaveSettings(EnableGIF, SaveAllImages, SaveDirectory, EnableImageShortcut, CaptureImageShortcutKeys, EnableGIFShortcut, CaptureGIFShortcutKeys, EnablePrintScreen, EnableSound);
+                SaveSettings(EnableFullscreenCapture, EnableGIF, SaveAllImages, SaveDirectory, EnableImageShortcut, CaptureImageShortcutKeys, EnableGIFShortcut, 
+                    CaptureGIFShortcutKeys, EnablePrintScreen, EnableSound);
             }
         }
 
@@ -144,36 +163,35 @@ namespace ScreenShot.src
 
             var split = text.Split(' ');
 
-            return split.Select(s => (Key) keyConverter.ConvertFromString(s))
+            return split.Select(s => keyConverter.ConvertFromString(s))
+                .Where(x => x != null)
+                .Select(x => (Key) x)
                 .ToList();
         }
-        
-        public string KeysToString(List<Key> Keys)
+
+        private static string KeysToString(IReadOnlyCollection<Key> keys)
         {
             var keyConverter = new KeyConverter();
 
-            if (Keys.Count == 0)
+            if (keys.Count == 0)
                 return "";
 
-            var allKeys = "";
-            foreach (var Key in Keys)
-            {
-                allKeys += keyConverter.ConvertToString(Key) + " ";
-            }
-
+            var allKeys = keys.Aggregate("", (current, key) => current + keyConverter.ConvertToString(key) + " ");
             allKeys = allKeys.Substring(0, allKeys.Length - 1);
 
             return allKeys;
         }
         
+        // ReSharper disable once UnusedMember.Local
         private static List<string> GetListFromString(string text)
         {
             var split = text.Split(' ');
 
             return split.ToList();
         }
-        
-        public string GetStringFromKeys(List<string> keys)
+
+        // ReSharper disable once UnusedMember.Local
+        private string GetStringFromKeys(IReadOnlyCollection<string> keys)
         {
             if (keys.Count == 0)
             {
@@ -195,6 +213,8 @@ namespace ScreenShot.src
 
     public class SettingsContainer
     {
+        public bool EnableFullscreenCapture { get; set; }
+
         public bool EnableGIF { get; set; }
 
         public bool SaveAllImages { get; set; }

@@ -2,6 +2,7 @@
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
+using ScreenShot.src.settings;
 using ScreenShot.src.upload;
 
 namespace ScreenShot.src.capture
@@ -9,14 +10,12 @@ namespace ScreenShot.src.capture
     public class CaptureImage : Capture
     {
         private readonly Settings settings;
-        private readonly Config config;
 
         public CaptureImage(Settings settings, Config config)
         {
             this.settings = settings;
-            this.config = config;
 
-            Completed += (sender, args) =>
+            Completed += (_, args) =>
             {
                 var capturedArea = args.CapturedArea;
 
@@ -28,7 +27,7 @@ namespace ScreenShot.src.capture
                 var file = Path.GetTempPath() + DateTimeOffset.Now.ToUnixTimeMilliseconds() + ".png";
                 file = CaptureUsingBMP(file, capturedArea);
 
-                Upload.UploadFile(file, settings, this.config);
+                Upload.UploadFile(file, settings, config);
             };
         }
 

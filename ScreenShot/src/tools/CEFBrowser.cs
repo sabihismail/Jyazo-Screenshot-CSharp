@@ -1,20 +1,18 @@
-﻿using CefSharp;
-using CefSharp.Wpf;
-using ScreenShot.src.tools;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading;
-using System.Windows;
+using CefSharp;
+using CefSharp.Wpf;
 
-namespace ScreenShot.src.upload
+namespace ScreenShot.src.tools
 {
     public class CEFBrowser
     {
-        private readonly LifeSpanHandler LifeSpanHandler = new LifeSpanHandler();
+        private readonly LifeSpanHandler lifeSpanHandler = new();
 
         public readonly ChromiumWebBrowser Browser;
 
-        public List<Cookie> Cookies => LifeSpanHandler.CookieVisitor.Cookies;
+        public IEnumerable<Cookie> Cookies => lifeSpanHandler.CookieVisitor.Cookies;
 
         public CEFBrowser(string url, string authorizedURL, Action callback)
         {
@@ -25,12 +23,12 @@ namespace ScreenShot.src.upload
                 BrowserSettings =
                 {
                     DefaultEncoding = "UTF-8",
-                    WebGl = CefState.Disabled,
+                    WebGl = CefState.Disabled
                 },
-                LifeSpanHandler = LifeSpanHandler
+                LifeSpanHandler = lifeSpanHandler
             };
 
-            Browser.AddressChanged += (object sender, DependencyPropertyChangedEventArgs e) =>
+            Browser.AddressChanged += (_, e) =>
             {
                 if (e.NewValue == null)
                 {
@@ -47,15 +45,13 @@ namespace ScreenShot.src.upload
 
         public void Close()
         {
-            LifeSpanHandler.Close(Browser);
+            lifeSpanHandler.Close(Browser);
         }
     }
 
     public class LifeSpanHandler : ILifeSpanHandler
     {
-        public readonly CookieVisitor CookieVisitor = new CookieVisitor();
-
-        public bool IsClosed = false;
+        public readonly CookieVisitor CookieVisitor = new();
 
         public bool DoClose(IWebBrowser chromiumWebBrowser, IBrowser browser)
         {
@@ -85,15 +81,13 @@ namespace ScreenShot.src.upload
             {
                 CookieVisitor.WaitForAllCookies();
             }
-
-            IsClosed = true;
         }
     }
 
     public class CookieVisitor : ICookieVisitor
     {
-        public readonly List<Cookie> Cookies = new List<Cookie>();
-        private readonly ManualResetEvent GotAllCookies = new ManualResetEvent(false);
+        public readonly List<Cookie> Cookies = new();
+        private readonly ManualResetEvent gotAllCookies = new(false);
 
         public bool Visit(Cookie cookie, int count, int total, ref bool deleteCookie)
         {
@@ -101,7 +95,7 @@ namespace ScreenShot.src.upload
 
             if (count == total - 1)
             {
-                GotAllCookies.Set();
+                gotAllCookies.Set();
             }
 
             return true;
@@ -109,12 +103,12 @@ namespace ScreenShot.src.upload
 
         public void WaitForAllCookies()
         {
-            GotAllCookies.WaitOne();
+            gotAllCookies.WaitOne();
         }
 
         public void Dispose()
         {
-            GotAllCookies.Dispose();
+            gotAllCookies.Dispose();
         }
     }
 }

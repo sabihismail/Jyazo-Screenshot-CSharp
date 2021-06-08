@@ -1,17 +1,18 @@
-﻿using ScreenShot.src.tools;
-using System;
+﻿using System;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
+using ScreenShot.src.tools.display;
+using ScreenShot.src.tools.hooks;
 
-namespace ScreenShot.src.capture
+namespace ScreenShot.views.capture
 {
     public partial class CaptureScreen
     {
-        private readonly GlobalMouseHook mouseHook = new GlobalMouseHook();
+        private readonly GlobalMouseHook mouseHook = new();
 
         public System.Drawing.Rectangle? CapturedArea;
 
@@ -26,31 +27,31 @@ namespace ScreenShot.src.capture
 
             Cursor = Cursors.Cross;
 
-            mouseHook.MouseUpEvent += (sender2, mouseEvent) =>
+            mouseHook.MouseUpEvent += (_, _) =>
             {
-                Canvas_OnMouseUp(null, null);
+                Canvas_OnMouseUp();
             };
-            mouseHook.SetHook();
+            mouseHook.SetHookSafe();
 
             WindowState = WindowState.Maximized;
         }
 
         private void Canvas_OnMouseDown(object sender, MouseButtonEventArgs e)
         {
-            var pos = e.GetPosition(canvas);
+            var pos = e.GetPosition(Canvas);
 
             startX = (int)pos.X;
             startY = (int)pos.Y;
             
             rect = new Rectangle
             {
-                Fill = new SolidColorBrush(Color.FromArgb(90, 128, 128, 128)),
+                Fill = new SolidColorBrush(Color.FromArgb(90, 128, 128, 128))
             };
             
             Canvas.SetLeft(rect, startX);
             Canvas.SetTop(rect, startY);
 
-            canvas.Children.Add(rect);
+            Canvas.Children.Add(rect);
         }
 
         private void Canvas_OnMouseMove(object sender, MouseEventArgs e)
@@ -59,10 +60,10 @@ namespace ScreenShot.src.capture
             {
                 if (rect == null) return;
 
-                Canvas_OnMouseUp(null, null);
+                Canvas_OnMouseUp();
             }
 
-            var mousePosition = e.GetPosition(canvas);
+            var mousePosition = e.GetPosition(Canvas);
 
             var smallerX = Math.Min(startX, (int)mousePosition.X);
             var largerX = Math.Max(startX, (int)mousePosition.X);
@@ -76,7 +77,7 @@ namespace ScreenShot.src.capture
             Canvas.SetTop(rect, smallerY);
         }
 
-        private void Canvas_OnMouseUp(object sender, MouseButtonEventArgs e)
+        private void Canvas_OnMouseUp()
         {
             if (rect == null)
             {
