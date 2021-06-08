@@ -13,7 +13,7 @@ namespace ScreenShot.src.tools
         [DllImport("user32.dll")]
         private static extern IntPtr GetForegroundWindow();
 
-        [DllImport("user32.dll")]
+        [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
         private static extern int GetWindowText(IntPtr hWnd, StringBuilder text, int count);
 
         private const int MAX_TITLE_LENGTH = 256;

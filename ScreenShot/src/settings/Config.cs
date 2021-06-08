@@ -15,7 +15,7 @@ namespace ScreenShot.src
 
         public string ServerPassword = "";
 
-        public bool EnableGfycatUpload = true;
+        public bool EnableGfycatUpload = false;
 
         public string GfycatClientID = "";
 
