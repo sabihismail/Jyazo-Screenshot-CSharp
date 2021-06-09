@@ -16,13 +16,11 @@ namespace ScreenShot.src.capture
             {
                 var capturedArea = ((CaptureScreen) sender).CapturedArea;
 
-                if (capturedArea != null)
+                OnCompleted(new CaptureCompletedEventArgs
                 {
-                    OnCompleted(new CaptureCompletedEventArgs
-                    {
-                        CapturedArea = capturedArea.Value
-                    });
-                }
+                    Success = capturedArea.HasValue,
+                    CapturedArea = capturedArea ?? new Rectangle()
+                });
             };
         }
 
@@ -39,6 +37,8 @@ namespace ScreenShot.src.capture
 
     public class CaptureCompletedEventArgs : EventArgs
     {
+        public bool Success { get; set; }
+        
         public Rectangle CapturedArea { get; set; }
     }
 }

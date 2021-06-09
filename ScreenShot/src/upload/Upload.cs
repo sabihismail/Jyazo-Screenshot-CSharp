@@ -58,7 +58,7 @@ namespace ScreenShot.src.upload
             streamContent.Headers.Add("Content-Type", FileUtils.GetContentType(Path.GetExtension(file)));
             formData.Add(streamContent, "uploaded_image", Path.GetFileName(file));
 
-            var titleContent = new StringContent(!string.IsNullOrWhiteSpace(WindowInformation.ActiveWindow) ? WindowInformation.ActiveWindow : "", Encoding.UTF8);
+            var titleContent = new StringContent(!string.IsNullOrWhiteSpace(WindowHistory.LastWindowTitle) ? WindowHistory.LastWindowTitle : "", Encoding.UTF8);
             formData.Add(titleContent, "title");
 
             var server = config.Server;

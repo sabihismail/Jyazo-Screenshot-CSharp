@@ -15,6 +15,7 @@ using ScreenShot.src.capture;
 using ScreenShot.src.settings;
 using ScreenShot.src.tools;
 using ScreenShot.src.tools.display;
+using ScreenShot.src.tools.gpu;
 using ScreenShot.views.windows;
 using static ScreenShot.src.tools.util.URLUtils;
 
@@ -38,8 +39,8 @@ namespace ScreenShot.views
 
             ConfigureTaskbar();
             ConfigureShortcuts();
-
-            WindowInformation.BeginObservingWindows();
+            
+            WindowHistory.BeginObservingWindows();
         }
 
         private static void InitializeCEFSettings()
@@ -72,21 +73,22 @@ namespace ScreenShot.views
             
             Hook.GlobalEvents().OnCombination(dictionary);
         }
-
-        private static bool IsGameWindow()
-        {
-            
-        }
         
         private void HandleCaptureImageShortcut()
         {
-            if (!IsGameWindow())
+            var hwnd = WindowHistory.APPLICATION_HISTORY.Last.HWND;
+
+            var isGameWindow = GraphicsUtil.IsFullscreenGameWindow(hwnd);
+            if (isGameWindow == null)
             {
                 TryInstantiateCapture<CaptureImage>();
+                return;
             }
+
+            CaptureScreenDirectX.Capture(hwnd);
         }
 
-        private void TryInstantiateCapture<T>() where T : Capture
+        private void TryInstantiateCapture<T>() where T : src.capture.Capture
         {
             if (isAlreadyCapturingScreen > 0) return;
 

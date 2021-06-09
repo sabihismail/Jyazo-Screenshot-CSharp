@@ -18,6 +18,8 @@ namespace ScreenShot.src.capture
 
             Completed += (_, args) =>
             {
+                if (!args.Success) return;
+                
                 var capturedArea = args.CapturedArea;
 
                 if (capturedArea.Width <= 0 || capturedArea.Height <= 0)

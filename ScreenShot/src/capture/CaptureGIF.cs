@@ -10,6 +10,8 @@ namespace ScreenShot.src.capture
         {
             Completed += (_, args) =>
             {
+                if (!args.Success) return;
+                
                 var capturedArea = args.CapturedArea;
                 
                 var captureWindow = new CaptureGIFWindow(capturedArea, settings, config);

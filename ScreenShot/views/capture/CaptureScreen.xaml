@@ -4,19 +4,20 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
-        Title="CaptureScreen"
+        Title="Jyazo - Capture Image"
         ShowInTaskbar="False"
         AllowsTransparency="True"
         Topmost="True"
         WindowStyle="None"
         WindowState="Maximized"
         KeyDown="Window_KeyDown"
-        Deactivated="Window_Deactivated">
+        Deactivated="Window_Deactivated"
+        Closing="Window_OnClosing">
     <Window.Background>
         <SolidColorBrush Color="Gray" Opacity="0.01"/>
     </Window.Background>
     <Grid>
         <Canvas x:Name="Canvas" Background="Transparent" MouseDown="Canvas_OnMouseDown" MouseMove="Canvas_OnMouseMove" MouseLeave="Canvas_MouseLeave" 
-                HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
+                HorizontalAlignment="Stretch" VerticalAlignment="Stretch" KeyDown="Window_KeyDown" />
     </Grid>
 </Window>

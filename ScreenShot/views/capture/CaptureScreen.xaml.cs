@@ -1,4 +1,5 @@
 ﻿using System;
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -125,6 +126,11 @@ namespace ScreenShot.views.capture
         {
             Topmost = false;
             Topmost = true;
+        }
+
+        private void Window_OnClosing(object sender, CancelEventArgs e)
+        {
+            MOUSE_HOOK.MouseUpExt -= GlobalHookMouseUpExt;
         }
     }
 }
