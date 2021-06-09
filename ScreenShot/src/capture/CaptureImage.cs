@@ -7,11 +7,12 @@ using ScreenShot.src.upload;
 
 namespace ScreenShot.src.capture
 {
+    // ReSharper disable once ClassNeverInstantiated.Global
     public class CaptureImage : Capture
     {
         private readonly Settings settings;
 
-        public CaptureImage(Settings settings, Config config)
+        public CaptureImage(Settings settings, Config config) 
         {
             this.settings = settings;
 

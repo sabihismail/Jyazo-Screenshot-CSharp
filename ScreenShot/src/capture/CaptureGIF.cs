@@ -3,9 +3,10 @@ using ScreenShot.views.capture;
 
 namespace ScreenShot.src.capture
 {
+    // ReSharper disable once ClassNeverInstantiated.Global
     public class CaptureGIF : Capture
     {
-        public CaptureGIF(Settings settings, Config config)
+        public CaptureGIF(Settings settings, Config config) 
         {
             Completed += (_, args) =>
             {

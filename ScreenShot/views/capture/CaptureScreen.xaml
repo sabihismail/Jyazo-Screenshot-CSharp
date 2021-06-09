@@ -10,7 +10,6 @@
         Topmost="True"
         WindowStyle="None"
         WindowState="Maximized"
-        Closing="Window_Closing"
         KeyDown="Window_KeyDown"
         Deactivated="Window_Deactivated">
     <Window.Background>

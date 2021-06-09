@@ -15,6 +15,16 @@ namespace ScreenShot.src.tools.util
 
         [DllImport("user32.dll")]
         public static extern bool GetWindowRect(IntPtr hwnd, ref Rect rectangle);
+        
+        [DllImport("user32.dll")]
+        public static extern bool GetCursorPos(out Win32Point pt);
+        
+        [StructLayout(LayoutKind.Sequential)]
+        public readonly struct Win32Point
+        {
+            public readonly int X;
+            public readonly int Y;
+        }
 
         public struct Rect
         {

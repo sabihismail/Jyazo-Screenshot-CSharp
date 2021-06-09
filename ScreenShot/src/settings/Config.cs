@@ -50,10 +50,12 @@ namespace ScreenShot.src.settings
             GfycatClientID = gfycatClientID;
             GfycatClientSecret = gfycatClientSecret;
             EnableOAuth2 = enableOAuth2;
-            if (oAuth2Cookies != null)
+            if (oAuth2CookiesIn != null)
             {
                 oAuth2Cookies = oAuth2CookiesIn;
             }
+
+            oAuth2Cookies ??= new List<CookieJSON>();
 
             try
             {

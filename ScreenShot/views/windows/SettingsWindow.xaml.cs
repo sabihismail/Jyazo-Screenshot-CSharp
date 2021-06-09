@@ -26,10 +26,6 @@ namespace ScreenShot.views.windows
 
             InitializeComponent();
 
-            ChkAutomaticallySaveCapturedImagesToDisk_OnClick(null, null);
-            ChkEnableImageShortcut_OnClick(null, null);
-            ChkEnableGIFShortcut_OnClick(null, null);
-
             ChkEnableFullscreenCapture.IsChecked = settings.EnableFullscreenCapture;
             ChkEnableGIFCapture.IsChecked = settings.EnableGIF;
 
@@ -47,6 +43,10 @@ namespace ScreenShot.views.windows
 
             ChkEnablePrintScreen.IsChecked = settings.EnablePrintScreen;
             ChkPlaySound.IsChecked = settings.EnableSound;
+
+            ChkAutomaticallySaveCapturedImagesToDisk_OnClick(null, null);
+            ChkEnableImageShortcut_OnClick(null, null);
+            ChkEnableGIFShortcut_OnClick(null, null);
         }
 
         private void ChkAutomaticallySaveCapturedImagesToDisk_OnClick(object sender, RoutedEventArgs e)

@@ -5,15 +5,16 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
+using Gma.System.MouseKeyHook;
 using ScreenShot.src.tools.display;
-using ScreenShot.src.tools.hooks;
+using ScreenShot.src.tools.util;
 
 namespace ScreenShot.views.capture
 {
     public partial class CaptureScreen
     {
-        private readonly GlobalMouseHook mouseHook = new();
-
+        private static readonly IKeyboardMouseEvents MOUSE_HOOK = Hook.GlobalEvents();
+        
         public System.Drawing.Rectangle? CapturedArea;
 
         private Rectangle rect;
@@ -27,13 +28,16 @@ namespace ScreenShot.views.capture
 
             Cursor = Cursors.Cross;
 
-            mouseHook.MouseUpEvent += (_, _) =>
-            {
-                Canvas_OnMouseUp();
-            };
-            mouseHook.SetHookSafe();
-
+            MOUSE_HOOK.MouseUpExt += GlobalHookMouseUpExt;
+            
             WindowState = WindowState.Maximized;
+        }
+
+        private void GlobalHookMouseUpExt(object sender, MouseEventExtArgs e)
+        {
+            MOUSE_HOOK.MouseUpExt -= GlobalHookMouseUpExt;
+            
+            Application.Current.Dispatcher.Invoke(Canvas_OnMouseUp);
         }
 
         private void Canvas_OnMouseDown(object sender, MouseButtonEventArgs e)
@@ -102,7 +106,11 @@ namespace ScreenShot.views.capture
                 return;
             }
 
-            var screen = WPFScreen.GetScreenFrom(mouseHook.Point);
+            if (!NativeUtils.GetCursorPos(out var point)) return;
+            
+            var wpfPoint = new Point(point.X, point.Y);
+            var screen = WPFScreen.GetScreenFrom(wpfPoint);
+                
             screen.MoveWindow(this);
         }
 
@@ -118,11 +126,6 @@ namespace ScreenShot.views.capture
         {
             Topmost = false;
             Topmost = true;
-        }
-
-        private void Window_Closing(object sender, CancelEventArgs e)
-        {
-            mouseHook.UnHook();
         }
     }
 }

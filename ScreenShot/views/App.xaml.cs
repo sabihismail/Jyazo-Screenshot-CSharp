@@ -10,11 +10,11 @@ using System.Windows.Forms;
 using System.Windows.Input;
 using CefSharp;
 using CefSharp.Wpf;
+using Gma.System.MouseKeyHook;
 using ScreenShot.src.capture;
 using ScreenShot.src.settings;
 using ScreenShot.src.tools;
 using ScreenShot.src.tools.display;
-using ScreenShot.src.tools.hooks;
 using ScreenShot.views.windows;
 using static ScreenShot.src.tools.util.URLUtils;
 
@@ -22,18 +22,12 @@ namespace ScreenShot.views
 {
     public partial class App
     {
+        private static int isAlreadyCapturingScreen;
+        
         private NotifyIcon taskbarIcon;
 
         private readonly Settings settings = new();
         private readonly Config config = new();
-
-        private GlobalKeyboardHook globalKeyboardHook;
-
-        private HashSet<Key> imagePressed = new();
-        private int imageActive;
-
-        private HashSet<Key> gifPressed = new();
-        private int gifActive;
 
         public App()
         {
@@ -58,95 +52,46 @@ namespace ScreenShot.views
 
         private void ConfigureShortcuts()
         {
-            if (settings.CaptureImageShortcutKeys.Count == 0 && settings.CaptureGIFShortcutKeys.Count == 0) return;
+            if (!settings.CaptureImageShortcutKeys.Any() && !settings.CaptureGIFShortcutKeys.Any()) return;
+            
+            var imageCombination = WPFKeysToFormsKeyCombination(settings.CaptureImageShortcutKeys);
+            var gifCombination = WPFKeysToFormsKeyCombination(settings.CaptureGIFShortcutKeys);
 
-            globalKeyboardHook = new GlobalKeyboardHook();
-            globalKeyboardHook.KeyboardReleased += (_, e) =>
+            var dictionary = new Dictionary<Combination, Action>();
+            if (imageCombination != null)
             {
-                var key = KeyInterop.KeyFromVirtualKey(e.KeyboardData.VirtualCode);
-
-                imagePressed.Remove(key);
-                gifPressed.Remove(key);
-            };
-
-            globalKeyboardHook.KeyboardPressed += (_, e) =>
+                dictionary[imageCombination] = TryInstantiateCapture<CaptureImage>;
+            }
+            
+            if (gifCombination != null)
             {
-                var key = KeyInterop.KeyFromVirtualKey(e.KeyboardData.VirtualCode);
-
-                if (CheckKeyboardShortcut(key, settings.CaptureImageShortcutKeys, ref imagePressed))
-                {
-                    TryInstantiateCaptureImage();
-                }
-
-                if (CheckKeyboardShortcut(key, settings.CaptureGIFShortcutKeys, ref gifPressed))
-                {
-                    TryInstantiateCaptureGIF();
-                }
-            };
+                dictionary[gifCombination] = TryInstantiateCapture<CaptureGIF>;
+            }
+            
+            Hook.GlobalEvents().OnCombination(dictionary);
         }
 
-        private void TryInstantiateCaptureImage()
+        private void TryInstantiateCapture<T>() where T : Capture
         {
-            if (imageActive != 0) return;
+            if (isAlreadyCapturingScreen > 0) return;
 
-            var captureImage = new CaptureImage(settings, config);
+            Interlocked.Increment(ref isAlreadyCapturingScreen);
+            
+            CheckOAuth2(() =>
+            {
+                var captureGeneric = (T)Activator.CreateInstance(typeof(T), settings, config);
 
-            Interlocked.Increment(ref imageActive);
-
-            captureImage.Show();
-
-            Interlocked.Decrement(ref imageActive);
-        }
-
-        private void TryInstantiateCaptureGIF()
-        {
-            if (gifActive != 0) return;
-
-            var captureGIF = new CaptureGIF(settings, config);
-
-            Interlocked.Increment(ref gifActive);
-
-            captureGIF.Show();
-
-            Interlocked.Decrement(ref gifActive);
-        }
-
-        private static bool CheckKeyboardShortcut(Key key, ICollection<Key> shortcutKeys, ref HashSet<Key> clickedList)
-        {
-            if (!shortcutKeys.Contains(key)) return false;
-
-            clickedList.Add(key);
-
-            return clickedList.Intersect(shortcutKeys).Count() == shortcutKeys.Count;
+                captureGeneric.Completed += (_, _) => Interlocked.Decrement(ref isAlreadyCapturingScreen);
+                captureGeneric.Show();
+            });
         }
 
         private void ConfigureTaskbar()
         {
             var strip = new ContextMenuStrip();
 
-            var menuCaptureImage = new ToolStripMenuItem("Capture Image", null, (_, _) =>
-            {
-                void Action()
-                {
-                    var captureImage = new CaptureImage(settings, config);
-
-                    captureImage.Show();
-                }
-
-                CheckOAuth2(Action);
-            });
-
-            var menuCaptureGIF = new ToolStripMenuItem("Capture GIF", null, (_, _) =>
-            {
-                void Action()
-                {
-                    var captureGIF = new CaptureGIF(settings, config);
-
-                    captureGIF.Show();
-                }
-
-                CheckOAuth2(Action);
-            });
+            var menuCaptureImage = new ToolStripMenuItem("Capture Image", null, (_, _) => TryInstantiateCapture<CaptureImage>());
+            var menuCaptureGIF = new ToolStripMenuItem("Capture GIF", null, (_, _) => TryInstantiateCapture<CaptureGIF>());
 
             var menuViewAllImages = new ToolStripMenuItem("View All Images", null, (_, _) =>
             {
@@ -205,14 +150,7 @@ namespace ScreenShot.views
                     
                     case MouseButtons.Left:
                     {
-                        void Action()
-                        {
-                            var captureImage = new CaptureImage(settings, config);
-
-                            captureImage.Show();
-                        }
-
-                        CheckOAuth2(Action);
+                        TryInstantiateCapture<CaptureImage>();
                         break;
                     }
                     
@@ -241,6 +179,11 @@ namespace ScreenShot.views
             taskbarIcon.Visible = true;
         }
 
+        private void Application_Exit(object sender, System.Windows.ExitEventArgs e)
+        {
+            taskbarIcon.Dispose();
+        }
+
         private void CheckOAuth2(Action callback)
         {
             if (!config.EnableOAuth2)
@@ -252,9 +195,19 @@ namespace ScreenShot.views
             CheckIfOAuth2CredentialsValid(config, callback);
         }
 
-        private void Application_Exit(object sender, System.Windows.ExitEventArgs e)
+        private static Combination WPFKeysToFormsKeyCombination(IReadOnlyCollection<Key> keys)
         {
-            taskbarIcon.Dispose();
+            if (!keys.Any()) return null;
+            
+            var wpfKeys = keys.Select(KeyInterop.VirtualKeyFromKey)
+                .Select(x => (Keys) x)
+                .Select(x => x.ToString())
+                .ToList();
+
+            var wpfString = string.Join("+", wpfKeys);
+            var combination = Combination.FromString(wpfString);
+            
+            return combination;
         }
 
         private static async void CheckIfOAuth2CredentialsValid(Config config, Action callback)
