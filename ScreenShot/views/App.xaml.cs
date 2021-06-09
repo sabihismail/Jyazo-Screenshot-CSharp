@@ -22,6 +22,8 @@ namespace ScreenShot.views
 {
     public partial class App
     {
+        private const bool CAPTURE_TESTING = true;
+        
         private static int isAlreadyCapturingScreen;
         
         private NotifyIcon taskbarIcon;
@@ -60,7 +62,7 @@ namespace ScreenShot.views
             var dictionary = new Dictionary<Combination, Action>();
             if (imageCombination != null)
             {
-                dictionary[imageCombination] = TryInstantiateCapture<CaptureImage>;
+                dictionary[imageCombination] = HandleCaptureImageShortcut;
             }
             
             if (gifCombination != null)
@@ -69,6 +71,19 @@ namespace ScreenShot.views
             }
             
             Hook.GlobalEvents().OnCombination(dictionary);
+        }
+
+        private static bool IsGameWindow()
+        {
+            
+        }
+        
+        private void HandleCaptureImageShortcut()
+        {
+            if (!IsGameWindow())
+            {
+                TryInstantiateCapture<CaptureImage>();
+            }
         }
 
         private void TryInstantiateCapture<T>() where T : Capture
@@ -186,13 +201,17 @@ namespace ScreenShot.views
 
         private void CheckOAuth2(Action callback)
         {
-            if (!config.EnableOAuth2)
+            // ReSharper disable once ConditionIsAlwaysTrueOrFalse
+            if (!config.EnableOAuth2 || CAPTURE_TESTING)
             {
                 callback();
                 return;
             }
 
+            // ReSharper disable once HeuristicUnreachableCode
+#pragma warning disable 162
             CheckIfOAuth2CredentialsValid(config, callback);
+#pragma warning restore 162
         }
 
         private static Combination WPFKeysToFormsKeyCombination(IReadOnlyCollection<Key> keys)

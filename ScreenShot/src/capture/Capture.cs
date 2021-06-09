@@ -1,5 +1,4 @@
 ﻿using System;
-using ScreenShot.src.settings;
 using ScreenShot.views.capture;
 using Rectangle = System.Drawing.Rectangle;
 
