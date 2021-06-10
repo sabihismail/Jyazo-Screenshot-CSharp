@@ -1,91 +1,86 @@
-﻿using Capture.Hook.Common;
-using SharpDX;
-using SharpDX.Direct3D9;
-using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Diagnostics;
+using System.Drawing;
+using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
-using System.Text;
+using Capture.Hook.Common;
+using SharpDX;
+using SharpDX.Direct3D9;
+using Font = SharpDX.Direct3D9.Font;
 
 namespace Capture.Hook.DX9
 {
     internal class DXOverlayEngine : Component
     {
-        public List<IOverlay> Overlays { get; set; }
+        public List<IOverlay> Overlays { get; private set; }
 
-        bool _initialised = false;
-        bool _initialising = false;
+        private bool initialised;
+        private bool initialising;
 
-        Device _device;
-        Sprite _sprite;
-        Dictionary<string, Font> _fontCache = new Dictionary<string, Font>();
-        Dictionary<Element, Texture> _imageCache = new Dictionary<Element, Texture>();
+        private Sprite sprite;
+        private readonly Dictionary<string, Font> fontCache = new Dictionary<string, Font>();
+        private readonly Dictionary<Element, Texture> imageCache = new Dictionary<Element, Texture>();
 
-        public Device Device { get { return _device; } }
+        public Device Device { get; private set; }
 
         public DXOverlayEngine()
         {
             Overlays = new List<IOverlay>();
         }
 
-        private void EnsureInitiliased()
+        private void EnsureInitialized()
         {
-            Debug.Assert(_initialised);
+            Debug.Assert(initialised);
         }
 
         public bool Initialise(Device device)
         {
-            Debug.Assert(!_initialised);
-            if (_initialising)
+            Debug.Assert(!initialised);
+            if (initialising)
                 return false;
 
-            _initialising = true;
+            initialising = true;
 
             try
             {
 
-                _device = device;
+                Device = device;
 
-                _sprite = ToDispose(new Sprite(_device));
+                sprite = ToDispose(new Sprite(Device));
 
                 // Initialise any resources required for overlay elements
-                IntialiseElementResources();
+                InitializeElementResources();
 
-                _initialised = true;
+                initialised = true;
                 return true;
             }
             finally
             {
-                _initialising = false;
+                initialising = false;
             }
         }
 
-        private void IntialiseElementResources()
+        private void InitializeElementResources()
         {
-            foreach (var overlay in Overlays)
+            foreach (var element in Overlays.SelectMany(overlay => overlay.Elements))
             {
-                foreach (var element in overlay.Elements)
+                switch (element)
                 {
-                    var textElement = element as TextElement;
-                    var imageElement = element as ImageElement;
-
-                    if (textElement != null)
-                    {
+                    case TextElement textElement:
                         GetFontForTextElement(textElement);
-                    }
-                    else if (imageElement != null)
-                    {
+                        break;
+                        
+                    case ImageElement imageElement:
                         GetImageForImageElement(imageElement);
-                    }
+                        break;
                 }
             }
         }
 
         private void Begin()
         {
-            _sprite.Begin(SpriteFlags.AlphaBlend);
+            sprite.Begin(SpriteFlags.AlphaBlend);
         }
 
         /// <summary>
@@ -93,39 +88,39 @@ namespace Capture.Hook.DX9
         /// </summary>
         public void Draw()
         {
-            EnsureInitiliased();
+            EnsureInitialized();
 
             Begin();
 
+            // ReSharper disable once ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator
             foreach (var overlay in Overlays)
             {
-                foreach (var element in overlay.Elements)
+                foreach (var element in overlay.Elements.Where(element => !element.Hidden))
                 {
-                    if (element.Hidden)
-                        continue;
-
-                    var textElement = element as TextElement;
-                    var imageElement = element as ImageElement;
-
-                    if (textElement != null)
+                    switch (element)
                     {
-                        Font font = GetFontForTextElement(textElement);
-                        if (font != null && !String.IsNullOrEmpty(textElement.Text))
-                            font.DrawText(_sprite, textElement.Text, textElement.Location.X, textElement.Location.Y, new SharpDX.ColorBGRA(textElement.Color.R, textElement.Color.G, textElement.Color.B, textElement.Color.A));
-                    }
-                    else if (imageElement != null)
-                    {
-                        //Apply the scaling of the imageElement
-                        var rotation = Matrix.RotationZ(imageElement.Angle);
-                        var scaling = Matrix.Scaling(imageElement.Scale);
-                        _sprite.Transform = rotation * scaling;
+                        case TextElement textElement:
+                        {
+                            var font = GetFontForTextElement(textElement);
+                            if (font != null && !string.IsNullOrEmpty(textElement.Text))
+                                font.DrawText(sprite, textElement.Text, textElement.Location.X, textElement.Location.Y, new ColorBGRA(textElement.Color.R, textElement.Color.G, textElement.Color.B, textElement.Color.A));
+                            break;
+                        }
+                        case ImageElement imageElement:
+                        {
+                            //Apply the scaling of the imageElement
+                            var rotation = Matrix.RotationZ(imageElement.Angle);
+                            var scaling = Matrix.Scaling(imageElement.Scale);
+                            sprite.Transform = rotation * scaling;
 
-                        Texture image = GetImageForImageElement(imageElement);
-                        if (image != null)
-                            _sprite.Draw(image, new SharpDX.ColorBGRA(imageElement.Tint.R, imageElement.Tint.G, imageElement.Tint.B, imageElement.Tint.A), null, null, new Vector3(imageElement.Location.X, imageElement.Location.Y, 0));
+                            var image = GetImageForImageElement(imageElement);
+                            if (image != null)
+                                sprite.Draw(image, new ColorBGRA(imageElement.Tint.R, imageElement.Tint.G, imageElement.Tint.B, imageElement.Tint.A), null, null, new Vector3(imageElement.Location.X, imageElement.Location.Y, 0));
 
-                        //Reset the transform for other elements
-                        _sprite.Transform = Matrix.Identity;
+                            //Reset the transform for other elements
+                            sprite.Transform = Matrix.Identity;
+                            break;
+                        }
                     }
                 }
             }
@@ -135,7 +130,7 @@ namespace Capture.Hook.DX9
 
         private void End()
         {
-            _sprite.End();
+            sprite.End();
         }
 
         /// <summary>
@@ -145,58 +140,57 @@ namespace Capture.Hook.DX9
         {
             try
             {
-                foreach (var item in _fontCache)
+                foreach (var item in fontCache)
                     item.Value.OnLostDevice();
-                
-                if (_sprite != null)
-                    _sprite.OnLostDevice();
+
+                sprite?.OnLostDevice();
             }
-            catch { }
+            catch
+            {
+                // ignored
+            }
         }
 
-        Font GetFontForTextElement(TextElement element)
+        private Font GetFontForTextElement(TextElement element)
         {
-            Font result = null;
+            var fontKey = $"{element.Font.Name}{element.Font.Size}{element.Font.Style}{element.AntiAliased}";
 
-            string fontKey = String.Format("{0}{1}{2}{3}", element.Font.Name, element.Font.Size, element.Font.Style, element.AntiAliased);
-
-            if (!_fontCache.TryGetValue(fontKey, out result))
-            {
-                result = ToDispose(new Font(_device, new FontDescription { 
-                    FaceName = element.Font.Name,
-                    Italic = (element.Font.Style & System.Drawing.FontStyle.Italic) == System.Drawing.FontStyle.Italic,
-                    Quality = (element.AntiAliased ? FontQuality.Antialiased : FontQuality.Default),
-                    Weight = ((element.Font.Style & System.Drawing.FontStyle.Bold) == System.Drawing.FontStyle.Bold) ? FontWeight.Bold : FontWeight.Normal,
-                    Height = (int)element.Font.SizeInPoints
-                }));
-                _fontCache[fontKey] = result;
-            }
+            if (fontCache.TryGetValue(fontKey, out var result)) return result;
+            
+            result = ToDispose(new Font(Device, new FontDescription { 
+                FaceName = element.Font.Name,
+                Italic = (element.Font.Style & FontStyle.Italic) == FontStyle.Italic,
+                Quality = (element.AntiAliased ? FontQuality.Antialiased : FontQuality.Default),
+                Weight = ((element.Font.Style & FontStyle.Bold) == FontStyle.Bold) ? FontWeight.Bold : FontWeight.Normal,
+                Height = (int)element.Font.SizeInPoints
+            }));
+            
+            fontCache[fontKey] = result;
             return result;
         }
 
-        Texture GetImageForImageElement(ImageElement element)
+        private Texture GetImageForImageElement(ImageElement element)
         {
-            Texture result = null;
+            Texture result;
 
-            if (!String.IsNullOrEmpty(element.Filename))
+            if (!string.IsNullOrEmpty(element.Filename))
             {
-                if (!_imageCache.TryGetValue(element, out result))
-                {
-                    result = ToDispose(SharpDX.Direct3D9.Texture.FromFile(_device, element.Filename));
+                if (imageCache.TryGetValue(element, out result)) return result;
+                
+                result = ToDispose(Texture.FromFile(Device, element.Filename));
 
-                    _imageCache[element] = result;
-                }
+                imageCache[element] = result;
             }
-            else if (!_imageCache.TryGetValue(element, out result) && element.Bitmap != null)
+            else if (!imageCache.TryGetValue(element, out result) && element.Bitmap != null)
             {
                 using (var ms = new MemoryStream())
                 {
-                    element.Bitmap.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
+                    element.Bitmap.Save(ms, ImageFormat.Png);
                     ms.Seek(0, SeekOrigin.Begin);
                     result = ToDispose(Texture.FromStream(Device, ms));
                 }
 
-                _imageCache[element] = result;
+                imageCache[element] = result;
             }
             return result;
         }
@@ -209,15 +203,8 @@ namespace Capture.Hook.DX9
         {
             if (true)
             {
-                _device = null;
+                Device = null;
             }
         }
-
-        void SafeDispose(DisposeBase disposableObj)
-        {
-            if (disposableObj != null)
-                disposableObj.Dispose();
-        }
-
     }
 }

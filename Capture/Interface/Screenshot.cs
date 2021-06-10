@@ -1,25 +1,12 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Drawing;
-using System.IO;
 using System.Runtime.Remoting;
 using System.Security.Permissions;
-using System.Runtime.InteropServices;
 
 namespace Capture.Interface
 {
-    public class Screenshot : MarshalByRefObject, IDisposable
+    public sealed class Screenshot : MarshalByRefObject, IDisposable
     {
-        Guid _requestId;
-        public Guid RequestId
-        {
-            get
-            {
-                return _requestId;
-            }
-        }
+        public Guid RequestId { get; }
 
         public ImageFormat Format { get; set; }
 
@@ -28,21 +15,14 @@ namespace Capture.Interface
         public int Height { get; set; }
         public int Width { get; set; }
 
-        byte[] _data;
-        public byte[] Data
-        {
-            get
-            {
-                return _data;
-            }
-        }
+        public byte[] Data { get; }
 
-        private bool _disposed;
+        private bool disposed;
 
         public Screenshot(Guid requestId, byte[] data)
         {
-            _requestId = requestId;
-            _data = data;
+            RequestId = requestId;
+            Data = data;
         }
 
         ~Screenshot()
@@ -56,16 +36,16 @@ namespace Capture.Interface
             GC.SuppressFinalize(this);
         }
 
-        protected virtual void Dispose(bool disposeManagedResources)
+        private void Dispose(bool disposeManagedResources)
         {
-            if (!_disposed)
+            if (disposed) return;
+            
+            if (disposeManagedResources)
             {
-                if (disposeManagedResources)
-                {
-                    Disconnect();
-                }
-                _disposed = true;
+                Disconnect();
             }
+            
+            disposed = true;
         }
 
         /// <summary>

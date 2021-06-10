@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Runtime.InteropServices;
-
-namespace Capture.Hook
+﻿namespace Capture.Hook
 {
     /// <summary>
     /// The full list of IDirect3DDevice9 functions with the correct index
@@ -94,14 +88,14 @@ namespace Capture.Hook
         GetNPatchMode = 80,
         DrawPrimitive = 81,
         DrawIndexedPrimitive = 82,
-        DrawPrimitiveUP = 83,
-        DrawIndexedPrimitiveUP = 84,
+        DRAW_PRIMITIVE_UP = 83,
+        DRAW_INDEXED_PRIMITIVE_UP = 84,
         ProcessVertices = 85,
         CreateVertexDeclaration = 86,
         SetVertexDeclaration = 87,
         GetVertexDeclaration = 88,
-        SetFVF = 89,
-        GetFVF = 90,
+        SET_FVF = 89,
+        GET_FVF = 90,
         CreateVertexShader = 91,
         SetVertexShader = 92,
         GetVertexShader = 93,
@@ -137,13 +131,13 @@ namespace Capture.Hook
         SetConvolutionMonoKernel = 119,
         ComposeRects = 120,
         PresentEx = 121,
-        GetGPUThreadPriority = 122,
-        SetGPUThreadPriority = 123,
+        GET_GPU_THREAD_PRIORITY = 122,
+        SET_GPU_THREAD_PRIORITY = 123,
         WaitForVBlank = 124,
         CheckResourceResidency = 125,
         SetMaximumFrameLatency = 126,
         GetMaximumFrameLatency = 127,
-        CheckDeviceState_ = 128,
+        CHECK_DEVICE_STATE_ = 128,
         CreateRenderTargetEx = 129,
         CreateOffscreenPlainSurfaceEx = 130,
         CreateDepthStencilSurfaceEx = 131,

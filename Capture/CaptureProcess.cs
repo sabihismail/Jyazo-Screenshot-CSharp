@@ -1,20 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using EasyHook;
 using System.Runtime.Remoting;
-using System.Runtime.Remoting.Channels.Ipc;
-using System.IO;
 using Capture.Interface;
 using System.Diagnostics;
 using System.Threading;
 using Capture.Hook;
-using System.Security.Principal;
-using System.Security.Cryptography;
-using System.Security.AccessControl;
-using System.Runtime.Remoting.Channels;
-using System.Runtime.Serialization.Formatters;
 
 namespace Capture
 {
@@ -23,14 +13,12 @@ namespace Capture
         /// <summary>
         /// Must be null to allow a random channel name to be generated
         /// </summary>
-        private readonly string channelName = null;
-        
-        private IpcServerChannel screenshotServer;
-        
-        public Process Process { get; set; }
+        private readonly string channelName;
+
+        private Process Process { get; set; }
 
         /// <summary>
-        /// Prepares capturing in the target process. Note that the process must not already be hooked, and must have a <see cref="Process.MainWindowHandle"/>.
+        /// Prepares capturing in the target process. Note that the process must not already be hooked, and must have a MainWindowHandle/>.
         /// </summary>
         /// <param name="process">The process to inject into</param>
         /// <param name="config"></param>
@@ -41,7 +29,7 @@ namespace Capture
         /// <remarks>The target process will have its main window brought to the foreground after successful injection.</remarks>
         public CaptureProcess(Process process, CaptureConfig config, CaptureInterface captureInterface)
         {
-            // If the process doesn't have a mainwindowhandle yet, skip it (we need to be able to get the hwnd to set foreground etc)
+            // If the process doesn't have a MainWindowHandle yet, skip it (we need to be able to get the hwnd to set foreground etc)
             if (process.MainWindowHandle == IntPtr.Zero)
             {
                 throw new ProcessHasNoWindowHandleException();
@@ -58,7 +46,7 @@ namespace Capture
             //_serverInterface = new CaptureInterface() { ProcessId = process.Id };
 
             // Initialise the IPC server (with our instance of _serverInterface)
-            screenshotServer = RemoteHooking.IpcCreateServer(
+            RemoteHooking.IpcCreateServer(
                 ref channelName,
                 WellKnownObjectMode.Singleton,
                 CaptureInterface);
@@ -94,7 +82,7 @@ namespace Capture
             BringProcessWindowToFront();
         }
 
-        public CaptureInterface CaptureInterface { get; }
+        private CaptureInterface CaptureInterface { get; }
 
         ~CaptureProcess()
         {
@@ -108,12 +96,12 @@ namespace Capture
         /// Bring the target window to the front and wait for it to be visible
         /// </summary>
         /// <remarks>If the window does not come to the front within approx. 30 seconds an exception is raised</remarks>
-        public void BringProcessWindowToFront()
+        private void BringProcessWindowToFront()
         {
-            if (this.Process == null)
+            if (Process == null)
                 return;
-            IntPtr handle = this.Process.MainWindowHandle;
-            int i = 0;
+            var handle = Process.MainWindowHandle;
+            var i = 0;
 
             while (!NativeMethods.IsWindowInForeground(handle))
             {
@@ -156,7 +144,7 @@ namespace Capture
 
         #region IDispose
 
-        public bool IsDisposed = false;
+        private bool isDisposed;
 
         public void Dispose()
         {
@@ -166,7 +154,7 @@ namespace Capture
 
         protected virtual void Dispose(bool disposing)
         {
-            if (IsDisposed) return;
+            if (isDisposed) return;
             
             if (disposing)
             {
@@ -174,7 +162,7 @@ namespace Capture
                 CaptureInterface.Disconnect();
             }
 
-            IsDisposed = true;
+            isDisposed = true;
         }
 
         #endregion

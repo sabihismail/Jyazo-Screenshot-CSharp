@@ -1,31 +1,23 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+using System.Drawing;
 
 namespace Capture.Hook.Common
 {
     [Serializable]
     public class FramesPerSecond: TextElement
     {
-        string _fpsFormat = "{0:N0} fps";
+        private string fpsFormat = "{0:N0} fps";
         public override string Text
         {
-            get
-            {
-                return String.Format(_fpsFormat, GetFPS());
-            }
-            set
-            {
-                _fpsFormat = value;
-            }
+            get => string.Format(fpsFormat, GetFps());
+            set => fpsFormat = value;
         }
 
-        int _frames = 0;
-        int _lastTickCount = 0;
-        float _lastFrameRate = 0;
+        private int frames;
+        private int lastTickCount;
+        private float lastFrameRate;
 
-        public FramesPerSecond(System.Drawing.Font font)
+        public FramesPerSecond(Font font)
             : base(font)
         {
         }
@@ -35,12 +27,12 @@ namespace Capture.Hook.Common
         /// </summary>
         public override void Frame()
         {
-            _frames++;
-            if (Math.Abs(Environment.TickCount - _lastTickCount) > 1000)
+            frames++;
+            if (Math.Abs(Environment.TickCount - lastTickCount) > 1000)
             {
-                _lastFrameRate = (float)_frames * 1000 / Math.Abs(Environment.TickCount - _lastTickCount);
-                _lastTickCount = Environment.TickCount;
-                _frames = 0;
+                lastFrameRate = (float)frames * 1000 / Math.Abs(Environment.TickCount - lastTickCount);
+                lastTickCount = Environment.TickCount;
+                frames = 0;
             }
         }
 
@@ -48,9 +40,9 @@ namespace Capture.Hook.Common
         /// Return the current frames per second
         /// </summary>
         /// <returns></returns>
-        public float GetFPS()
+        public float GetFps()
         {
-            return _lastFrameRate;
+            return lastFrameRate;
         }
     }
 }

@@ -1,15 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Diagnostics;
 using EasyHook;
 
 namespace Capture.Hook
 {
-    public class HookManager
+    public static class HookManager
     {
-        static internal List<Int32> HookedProcesses = new List<Int32>();
+        private static readonly List<int> HookedProcesses = new List<int>();
 
         /*
          * Please note that we have obtained this information with system privileges.
@@ -20,10 +18,12 @@ namespace Capture.Hook
          * Of course you can change the way this list is implemented and the information
          * it contains but you should keep the code semantic.
          */
+        // ReSharper disable once UnusedMember.Global
         internal static List<ProcessInfo> ProcessList = new List<ProcessInfo>();
-        private static List<Int32> ActivePIDList = new List<Int32>();
+        // ReSharper disable once UnusedMember.Local
+        private static List<int> activePidList = new List<int>();
 
-        public static void AddHookedProcess(Int32 processId)
+        public static void AddHookedProcess(int processId)
         {
             lock (HookedProcesses)
             {
@@ -31,7 +31,7 @@ namespace Capture.Hook
             }
         }
 
-        public static void RemoveHookedProcess(Int32 processId)
+        public static void RemoveHookedProcess(int processId)
         {
             lock (HookedProcesses)
             {
@@ -39,7 +39,7 @@ namespace Capture.Hook
             }
         }
 
-        public static bool IsHooked(Int32 processId)
+        public static bool IsHooked(int processId)
         {
             lock (HookedProcesses)
             {
@@ -50,34 +50,31 @@ namespace Capture.Hook
         [Serializable]
         public class ProcessInfo
         {
-            public String FileName;
-            public Int32 Id;
-            public Boolean Is64Bit;
-            public String User;
+            public string FileName;
+            public int Id;
+            public bool Is64Bit;
+            public string User;
         }
 
         public static ProcessInfo[] EnumProcesses()
         {
-            List<ProcessInfo> result = new List<ProcessInfo>();
-            Process[] procList = Process.GetProcesses();
+            var result = new List<ProcessInfo>();
+            var procList = Process.GetProcesses();
 
-            for (int i = 0; i < procList.Length; i++)
+            foreach (var proc in procList)
             {
-                Process proc = procList[i];
-
                 try
                 {
-                    ProcessInfo info = new ProcessInfo();
-
-                    info.FileName = proc.MainModule.FileName;
-                    info.Id = proc.Id;
-                    info.Is64Bit = RemoteHooking.IsX64Process(proc.Id);
-                    info.User = RemoteHooking.GetProcessIdentity(proc.Id).Name;
+                    var info = new ProcessInfo
+                    {
+                        FileName = proc.MainModule?.FileName, Id = proc.Id, Is64Bit = RemoteHooking.IsX64Process(proc.Id), User = RemoteHooking.GetProcessIdentity(proc.Id).Name
+                    };
 
                     result.Add(info);
                 }
                 catch
                 {
+                    // ignored
                 }
             }
 

@@ -1,21 +1,24 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+using System.IO;
+using System.Runtime.InteropServices;
+using System.Threading;
+using Capture.Hook.DX11;
+using Capture.Interface;
+using SharpDX;
+using SharpDX.Direct3D;
 using SharpDX.Direct3D11;
 using SharpDX.DXGI;
-using SharpDX;
-using System.Runtime.InteropServices;
-using EasyHook;
-using System.Threading;
-using System.IO;
-using Capture.Interface;
-using SharpDX.Direct3D;
-using Capture.Hook.Common;
+using SharpDX.WIC;
+using SharpDX.Windows;
+using Device = SharpDX.Direct3D11.Device;
+using MapFlags = SharpDX.Direct3D11.MapFlags;
+using PixelFormat = System.Drawing.Imaging.PixelFormat;
+using Resource = SharpDX.DXGI.Resource;
 
 namespace Capture.Hook
 {
-    enum D3D11DeviceVTbl : short
+    internal enum D3D11DeviceVTbl : short
     {
         // IUnknown
         QueryInterface = 0,
@@ -70,102 +73,98 @@ namespace Capture.Hook
     /// </summary>
     internal class DXHookD3D11: BaseDXHook
     {
-        const int D3D11_DEVICE_METHOD_COUNT = 43;
+        private const int D_3D11_DEVICE_METHOD_COUNT = 43;
 
         public DXHookD3D11(CaptureInterface ssInterface)
             : base(ssInterface)
         {
         }
 
-        List<IntPtr> _d3d11VTblAddresses = null;
-        List<IntPtr> _dxgiSwapChainVTblAddresses = null;
+        private List<IntPtr> d3d11VTblAddresses;
+        private List<IntPtr> dxgiSwapChainVTblAddresses;
 
-        Hook<DXGISwapChain_PresentDelegate> DXGISwapChain_PresentHook = null;
-        Hook<DXGISwapChain_ResizeTargetDelegate> DXGISwapChain_ResizeTargetHook = null;
+        private Hook<DxgiSwapChainPresentDelegate> dxgiSwapChainPresentHook;
+        private Hook<DxgiSwapChainResizeTargetDelegate> dxgiSwapChainResizeTargetHook;
 
-        object _lock = new object();
+        private readonly object @lock = new object();
 
         #region Internal device resources
-        SharpDX.Direct3D11.Device _device;
-        SwapChain _swapChain;
-        SharpDX.Windows.RenderForm _renderForm;
-        Texture2D _resolvedRTShared;
+
+        private Device device;
+        private SwapChain swapChain;
+        private RenderForm renderForm;
+        private Texture2D resolvedRtShared;
 #pragma warning disable 169
-        SharpDX.DXGI.KeyedMutex _resolvedRTSharedKeyedMutex;
+        private KeyedMutex resolvedRtSharedKeyedMutex;
 #pragma warning restore 169
-        ShaderResourceView _resolvedSRV;
-        Capture.Hook.DX11.ScreenAlignedQuadRenderer _saQuad;
-        Texture2D _finalRT;
-        Texture2D _resizedRT;
-        RenderTargetView _resizedRTV;
+        private ShaderResourceView resolvedSrv;
+        private ScreenAlignedQuadRenderer saQuad;
+        private Texture2D finalRt;
+        private Texture2D resizedRt;
+        private RenderTargetView resizedRtv;
         #endregion
 
-        Query _query;
+        private Query query;
 #pragma warning disable 414
-        bool _queryIssued;
+        private bool queryIssued;
 #pragma warning restore 414
-        bool _finalRTMapped;
-        ScreenshotRequest _requestCopy;
+        private bool finalRtMapped;
+        private ScreenshotRequest requestCopy;
 
         #region Main device resources
-        Texture2D _resolvedRT;
-        SharpDX.DXGI.KeyedMutex _resolvedRTKeyedMutex;
-        SharpDX.DXGI.KeyedMutex _resolvedRTKeyedMutex_Dev2;
+
+        private Texture2D resolvedRt;
+        private KeyedMutex resolvedRtKeyedMutex;
+        private KeyedMutex resolvedRtKeyedMutexDev2;
         #endregion
 
-        protected override string HookName
-        {
-            get
-            {
-                return "DXHookD3D11";
-            }
-        }
+        protected override string HookName => "DXHookD3D11";
 
         public override void Hook()
         {
-            this.DebugMessage("Hook: Begin");
-            if (_d3d11VTblAddresses == null)
+            DebugMessage("Hook: Begin");
+            if (d3d11VTblAddresses == null)
             {
-                _d3d11VTblAddresses = new List<IntPtr>();
-                _dxgiSwapChainVTblAddresses = new List<IntPtr>();
+                d3d11VTblAddresses = new List<IntPtr>();
+                dxgiSwapChainVTblAddresses = new List<IntPtr>();
 
                 #region Get Device and SwapChain method addresses
                 // Create temporary device + swapchain and determine method addresses
-                _renderForm = ToDispose(new SharpDX.Windows.RenderForm());
-                this.DebugMessage("Hook: Before device creation");
-                SharpDX.Direct3D11.Device.CreateWithSwapChain(
+                renderForm = ToDispose(new RenderForm());
+                DebugMessage("Hook: Before device creation");
+                Device.CreateWithSwapChain(
                     DriverType.Hardware,
                     DeviceCreationFlags.BgraSupport,
-                    DXGI.CreateSwapChainDescription(_renderForm.Handle),
-                    out _device,
-                    out _swapChain);
+                    Dxgi.CreateSwapChainDescription(renderForm.Handle),
+                    out device,
+                    out swapChain);
 
-                ToDispose(_device);
-                ToDispose(_swapChain);
+                ToDispose(device);
+                ToDispose(swapChain);
 
-                if (_device != null && _swapChain != null)
+                if (device != null && swapChain != null)
                 {
-                    this.DebugMessage("Hook: Device created");
-                    _d3d11VTblAddresses.AddRange(GetVTblAddresses(_device.NativePointer, D3D11_DEVICE_METHOD_COUNT));
-                    _dxgiSwapChainVTblAddresses.AddRange(GetVTblAddresses(_swapChain.NativePointer, DXGI.DXGI_SWAPCHAIN_METHOD_COUNT));
+                    DebugMessage("Hook: Device created");
+                    d3d11VTblAddresses.AddRange(GetVTblAddresses(device.NativePointer, D_3D11_DEVICE_METHOD_COUNT));
+                    dxgiSwapChainVTblAddresses.AddRange(GetVTblAddresses(swapChain.NativePointer, Dxgi.DXGI_SWAPCHAIN_METHOD_COUNT));
                 }
                 else
                 {
-                    this.DebugMessage("Hook: Device creation failed");
+                    DebugMessage("Hook: Device creation failed");
                 }
                 #endregion
             }
 
             // We will capture the backbuffer here
-            DXGISwapChain_PresentHook = new Hook<DXGISwapChain_PresentDelegate>(
-                _dxgiSwapChainVTblAddresses[(int)DXGI.DXGISwapChainVTbl.Present],
-                new DXGISwapChain_PresentDelegate(PresentHook),
+            dxgiSwapChainPresentHook = new Hook<DxgiSwapChainPresentDelegate>(
+                dxgiSwapChainVTblAddresses[(int)Dxgi.DxgiSwapChainVTbl.Present],
+                new DxgiSwapChainPresentDelegate(PresentHook),
                 this);
             
             // We will capture target/window resizes here
-            DXGISwapChain_ResizeTargetHook = new Hook<DXGISwapChain_ResizeTargetDelegate>(
-                _dxgiSwapChainVTblAddresses[(int)DXGI.DXGISwapChainVTbl.ResizeTarget],
-                new DXGISwapChain_ResizeTargetDelegate(ResizeTargetHook),
+            dxgiSwapChainResizeTargetHook = new Hook<DxgiSwapChainResizeTargetDelegate>(
+                dxgiSwapChainVTblAddresses[(int)Dxgi.DxgiSwapChainVTbl.ResizeTarget],
+                new DxgiSwapChainResizeTargetDelegate(ResizeTargetHook),
                 this);
 
             /*
@@ -173,44 +172,42 @@ namespace Capture.Hook
              * The following ensures that all threads are intercepted:
              * Note: you must do this for each hook.
              */
-            DXGISwapChain_PresentHook.Activate();
+            dxgiSwapChainPresentHook.Activate();
             
-            DXGISwapChain_ResizeTargetHook.Activate();
+            dxgiSwapChainResizeTargetHook.Activate();
 
-            Hooks.Add(DXGISwapChain_PresentHook);
-            Hooks.Add(DXGISwapChain_ResizeTargetHook);
+            Hooks.Add(dxgiSwapChainPresentHook);
+            Hooks.Add(dxgiSwapChainResizeTargetHook);
         }
 
         public override void Cleanup()
         {
             try
             {
-                if (_overlayEngine != null)
-                {
-                    _overlayEngine.Dispose();
-                    _overlayEngine = null;
-                }
+                if (overlayEngine == null) return;
+                
+                overlayEngine.Dispose();
+                overlayEngine = null;
             }
             catch
             {
+                // ignored
             }
         }
 
         /// <summary>
         /// The IDXGISwapChain.Present function definition
         /// </summary>
-        /// <param name="device"></param>
         /// <returns></returns>
         [UnmanagedFunctionPointer(CallingConvention.StdCall, CharSet = CharSet.Unicode, SetLastError = true)]
-        delegate int DXGISwapChain_PresentDelegate(IntPtr swapChainPtr, int syncInterval, /* int */ SharpDX.DXGI.PresentFlags flags);
+        private delegate int DxgiSwapChainPresentDelegate(IntPtr swapChainPtr, int syncInterval, /* int */ PresentFlags flags);
 
         /// <summary>
         /// The IDXGISwapChain.ResizeTarget function definition
         /// </summary>
-        /// <param name="device"></param>
         /// <returns></returns>
         [UnmanagedFunctionPointer(CallingConvention.StdCall, CharSet = CharSet.Unicode, SetLastError = true)]
-        delegate int DXGISwapChain_ResizeTargetDelegate(IntPtr swapChainPtr, ref ModeDescription newTargetParameters);
+        private delegate int DxgiSwapChainResizeTargetDelegate(IntPtr swapChainPtr, ref ModeDescription newTargetParameters);
 
         /// <summary>
         /// Hooked to allow resizing a texture/surface that is reused. Currently not in use as we create the texture for each request
@@ -219,56 +216,55 @@ namespace Capture.Hook
         /// <param name="swapChainPtr"></param>
         /// <param name="newTargetParameters"></param>
         /// <returns></returns>
-        int ResizeTargetHook(IntPtr swapChainPtr, ref ModeDescription newTargetParameters)
+        private int ResizeTargetHook(IntPtr swapChainPtr, ref ModeDescription newTargetParameters)
         {
             // Dispose of overlay engine (so it will be recreated with correct renderTarget view size)
-            if (_overlayEngine != null)
-            {
-                _overlayEngine.Dispose();
-                _overlayEngine = null;
-            }
+            if (overlayEngine == null) return dxgiSwapChainResizeTargetHook.Original(swapChainPtr, ref newTargetParameters);
+            
+            overlayEngine.Dispose();
+            overlayEngine = null;
 
-            return DXGISwapChain_ResizeTargetHook.Original(swapChainPtr, ref newTargetParameters);
+            return dxgiSwapChainResizeTargetHook.Original(swapChainPtr, ref newTargetParameters);
         }
 
-        void EnsureResources(SharpDX.Direct3D11.Device device, Texture2DDescription description, Rectangle captureRegion, ScreenshotRequest request, bool useSameDeviceForResize = false)
+        private void EnsureResources(Device deviceIn, Texture2DDescription description, Rectangle captureRegion, ScreenshotRequest request, bool useSameDeviceForResize = false)
         {
-            var resizeDevice = useSameDeviceForResize ? device : _device;
+            var resizeDevice = useSameDeviceForResize ? deviceIn : device;
 
             // Check if _resolvedRT or _finalRT require creation
-            if (_finalRT != null && (_finalRT.Device.NativePointer == device.NativePointer || _finalRT.Device.NativePointer == _device.NativePointer) &&
-                _finalRT.Description.Height == captureRegion.Height && _finalRT.Description.Width == captureRegion.Width &&
-                _resolvedRT != null && _resolvedRT.Description.Height == description.Height && _resolvedRT.Description.Width == description.Width &&
-                (_resolvedRT.Device.NativePointer == device.NativePointer || _resolvedRT.Device.NativePointer == _device.NativePointer) && _resolvedRT.Description.Format == description.Format
+            if (finalRt != null && (finalRt.Device.NativePointer == deviceIn.NativePointer || finalRt.Device.NativePointer == device.NativePointer) &&
+                finalRt.Description.Height == captureRegion.Height && finalRt.Description.Width == captureRegion.Width &&
+                resolvedRt != null && resolvedRt.Description.Height == description.Height && resolvedRt.Description.Width == description.Width &&
+                (resolvedRt.Device.NativePointer == deviceIn.NativePointer || resolvedRt.Device.NativePointer == device.NativePointer) && resolvedRt.Description.Format == description.Format
                 )
             {
 
             }
             else
             {
-                RemoveAndDispose(ref _query);
-                RemoveAndDispose(ref _resolvedRT);
-                RemoveAndDispose(ref _resolvedSRV);
-                RemoveAndDispose(ref _finalRT);
-                RemoveAndDispose(ref _resolvedRTShared);
-                RemoveAndDispose(ref _resolvedRTKeyedMutex);
-                RemoveAndDispose(ref _resolvedRTKeyedMutex_Dev2);
+                RemoveAndDispose(ref query);
+                RemoveAndDispose(ref resolvedRt);
+                RemoveAndDispose(ref resolvedSrv);
+                RemoveAndDispose(ref finalRt);
+                RemoveAndDispose(ref resolvedRtShared);
+                RemoveAndDispose(ref resolvedRtKeyedMutex);
+                RemoveAndDispose(ref resolvedRtKeyedMutexDev2);
 
-                _query = new Query(resizeDevice, new QueryDescription()
+                query = new Query(resizeDevice, new QueryDescription
                 {
                     Flags = QueryFlags.None,
                     Type = QueryType.Event
                 });
-                _queryIssued = false;
+                queryIssued = false;
 
                 try
                 {
-                    ResourceOptionFlags resolvedRTOptionFlags = ResourceOptionFlags.None;
+                    var resolvedRtOptionFlags = ResourceOptionFlags.None;
 
-                    if (device != resizeDevice)
-                        resolvedRTOptionFlags |= ResourceOptionFlags.SharedKeyedmutex;
+                    if (deviceIn != resizeDevice)
+                        resolvedRtOptionFlags |= ResourceOptionFlags.SharedKeyedmutex;
 
-                    _resolvedRT = ToDispose(new Texture2D(device, new Texture2DDescription()
+                    resolvedRt = ToDispose(new Texture2D(deviceIn, new Texture2DDescription
                     {
                         CpuAccessFlags = CpuAccessFlags.None,
                         Format = description.Format, // for multisampled backbuffer, this must be same format
@@ -276,39 +272,39 @@ namespace Capture.Hook
                         Usage = ResourceUsage.Default,
                         Width = description.Width,
                         ArraySize = 1,
-                        SampleDescription = new SharpDX.DXGI.SampleDescription(1, 0), // Ensure single sample
+                        SampleDescription = new SampleDescription(1, 0), // Ensure single sample
                         BindFlags = BindFlags.ShaderResource,
                         MipLevels = 1,
-                        OptionFlags = resolvedRTOptionFlags
+                        OptionFlags = resolvedRtOptionFlags
                     }));
                 }
                 catch
                 {
                     // Failed to create the shared resource, try again using the same device as game for resize
-                    EnsureResources(device, description, captureRegion, request, true);
+                    EnsureResources(deviceIn, description, captureRegion, request, true);
                     return;
                 }
 
                 // Retrieve reference to the keyed mutex
-                _resolvedRTKeyedMutex = ToDispose(_resolvedRT.QueryInterfaceOrNull<SharpDX.DXGI.KeyedMutex>());
+                resolvedRtKeyedMutex = ToDispose(resolvedRt.QueryInterfaceOrNull<KeyedMutex>());
 
                 // If the resolvedRT is a shared resource _resolvedRTKeyedMutex will not be null
-                if (_resolvedRTKeyedMutex != null)
+                if (resolvedRtKeyedMutex != null)
                 {
-                    using (var resource = _resolvedRT.QueryInterface<SharpDX.DXGI.Resource>())
+                    using (var resource = resolvedRt.QueryInterface<Resource>())
                     {
-                        _resolvedRTShared = ToDispose(resizeDevice.OpenSharedResource<Texture2D>(resource.SharedHandle));
-                        _resolvedRTKeyedMutex_Dev2 = ToDispose(_resolvedRTShared.QueryInterfaceOrNull<SharpDX.DXGI.KeyedMutex>());
+                        resolvedRtShared = ToDispose(resizeDevice.OpenSharedResource<Texture2D>(resource.SharedHandle));
+                        resolvedRtKeyedMutexDev2 = ToDispose(resolvedRtShared.QueryInterfaceOrNull<KeyedMutex>());
                     }
                     // SRV for use if resizing
-                    _resolvedSRV = ToDispose(new ShaderResourceView(resizeDevice, _resolvedRTShared));
+                    resolvedSrv = ToDispose(new ShaderResourceView(resizeDevice, resolvedRtShared));
                 }
                 else
                 {
-                    _resolvedSRV = ToDispose(new ShaderResourceView(resizeDevice, _resolvedRT));
+                    resolvedSrv = ToDispose(new ShaderResourceView(resizeDevice, resolvedRt));
                 }
 
-                _finalRT = ToDispose(new Texture2D(resizeDevice, new Texture2DDescription()
+                finalRt = ToDispose(new Texture2D(resizeDevice, new Texture2DDescription
                 {
                     CpuAccessFlags = CpuAccessFlags.Read,
                     Format = description.Format,
@@ -316,41 +312,41 @@ namespace Capture.Hook
                     Usage = ResourceUsage.Staging,
                     Width = captureRegion.Width,
                     ArraySize = 1,
-                    SampleDescription = new SharpDX.DXGI.SampleDescription(1, 0),
+                    SampleDescription = new SampleDescription(1, 0),
                     BindFlags = BindFlags.None,
                     MipLevels = 1,
                     OptionFlags = ResourceOptionFlags.None
                 }));
-                _finalRTMapped = false;
+                finalRtMapped = false;
             }
 
-            if (_resolvedRT != null && _resolvedRTKeyedMutex_Dev2 == null && resizeDevice == _device)
-                resizeDevice = device;
+            if (resolvedRt != null && resolvedRtKeyedMutexDev2 == null && resizeDevice == device)
+                resizeDevice = deviceIn;
 
-            if (resizeDevice != null && request.Resize != null && (_resizedRT == null || (_resizedRT.Device.NativePointer != resizeDevice.NativePointer || _resizedRT.Description.Width != request.Resize.Value.Width || _resizedRT.Description.Height != request.Resize.Value.Height)))
+            if (resizeDevice != null && request.Resize != null && (resizedRt == null || (resizedRt.Device.NativePointer != resizeDevice.NativePointer || resizedRt.Description.Width != request.Resize.Value.Width || resizedRt.Description.Height != request.Resize.Value.Height)))
             {
                 // Create/Recreate resources for resizing
-                RemoveAndDispose(ref _resizedRT);
-                RemoveAndDispose(ref _resizedRTV);
-                RemoveAndDispose(ref _saQuad);
+                RemoveAndDispose(ref resizedRt);
+                RemoveAndDispose(ref resizedRtv);
+                RemoveAndDispose(ref saQuad);
 
-                _resizedRT = ToDispose(new Texture2D(resizeDevice, new Texture2DDescription()
+                resizedRt = ToDispose(new Texture2D(resizeDevice, new Texture2DDescription
                 {
-                    Format = SharpDX.DXGI.Format.R8G8B8A8_UNorm, // Supports BMP/PNG/etc
+                    Format = Format.R8G8B8A8_UNorm, // Supports BMP/PNG/etc
                     Height = request.Resize.Value.Height,
                     Width = request.Resize.Value.Width,
                     ArraySize = 1,
-                    SampleDescription = new SharpDX.DXGI.SampleDescription(1, 0),
+                    SampleDescription = new SampleDescription(1, 0),
                     BindFlags = BindFlags.RenderTarget,
                     MipLevels = 1,
                     Usage = ResourceUsage.Default,
                     OptionFlags = ResourceOptionFlags.None
                 }));
 
-                _resizedRTV = ToDispose(new RenderTargetView(resizeDevice, _resizedRT));
+                resizedRtv = ToDispose(new RenderTargetView(resizeDevice, resizedRt));
 
-                _saQuad = ToDispose(new DX11.ScreenAlignedQuadRenderer());
-                _saQuad.Initialize(new DX11.DeviceManager(resizeDevice));
+                saQuad = ToDispose(new ScreenAlignedQuadRenderer());
+                saQuad.Initialize(new DeviceManager(resizeDevice));
             }
         }
 
@@ -361,110 +357,99 @@ namespace Capture.Hook
         /// <param name="syncInterval"></param>
         /// <param name="flags"></param>
         /// <returns>The HRESULT of the original method</returns>
-        int PresentHook(IntPtr swapChainPtr, int syncInterval, SharpDX.DXGI.PresentFlags flags)
+        private int PresentHook(IntPtr swapChainPtr, int syncInterval, PresentFlags flags)
         {
-            this.Frame();
-            SwapChain swapChain = (SharpDX.DXGI.SwapChain)swapChainPtr;
+            Frame();
+            var swapChainIn = (SwapChain)swapChainPtr;
             try
             {
                 #region Screenshot Request
-                if (this.Request != null)
+                if (Request != null)
                 {
-                    this.DebugMessage("PresentHook: Request Start");
-                    DateTime startTime = DateTime.Now;
-                    using (Texture2D currentRT = Texture2D.FromSwapChain<Texture2D>(swapChain, 0))
+                    DebugMessage("PresentHook: Request Start");
+                    var startTime = DateTime.Now;
+                    using (var currentRt = SharpDX.Direct3D11.Resource.FromSwapChain<Texture2D>(swapChainIn, 0))
                     {
                         #region Determine region to capture
-                        Rectangle captureRegion = new Rectangle(0, 0, currentRT.Description.Width, currentRT.Description.Height);
+                        var captureRegion = new Rectangle(0, 0, currentRt.Description.Width, currentRt.Description.Height);
 
-                        if (this.Request.RegionToCapture.Width > 0)
+                        if (Request.RegionToCapture.Width > 0)
                         {
-                            captureRegion = new Rectangle(this.Request.RegionToCapture.Left, this.Request.RegionToCapture.Top, this.Request.RegionToCapture.Right, this.Request.RegionToCapture.Bottom);
+                            captureRegion = new Rectangle(Request.RegionToCapture.Left, Request.RegionToCapture.Top, Request.RegionToCapture.Right, Request.RegionToCapture.Bottom);
                         }
-                        else if (this.Request.Resize.HasValue)
+                        else if (Request.Resize.HasValue)
                         {
-                            captureRegion = new Rectangle(0, 0, this.Request.Resize.Value.Width, this.Request.Resize.Value.Height);
+                            captureRegion = new Rectangle(0, 0, Request.Resize.Value.Width, Request.Resize.Value.Height);
                         }
                         #endregion
 
                         // Create / Recreate resources as necessary
-                        EnsureResources(currentRT.Device, currentRT.Description, captureRegion, Request);
+                        EnsureResources(currentRt.Device, currentRt.Description, captureRegion, Request);
 
-                        Texture2D sourceTexture = null;
+                        Texture2D sourceTexture;
 
                         // If texture is multisampled, then we can use ResolveSubresource to copy it into a non-multisampled texture
-                        if (currentRT.Description.SampleDescription.Count > 1 || Request.Resize.HasValue)
+                        if (currentRt.Description.SampleDescription.Count > 1 || Request.Resize.HasValue)
                         {
-                            if (Request.Resize.HasValue)
-                                this.DebugMessage("PresentHook: resizing texture");
-                            else
-                                this.DebugMessage("PresentHook: resolving multi-sampled texture");
+                            DebugMessage(Request.Resize.HasValue ? "PresentHook: resizing texture" : "PresentHook: resolving multi-sampled texture");
 
                             // Resolve into _resolvedRT
-                            if (_resolvedRTKeyedMutex != null)
-                                _resolvedRTKeyedMutex.Acquire(0, int.MaxValue);
-                            currentRT.Device.ImmediateContext.ResolveSubresource(currentRT, 0, _resolvedRT, 0, _resolvedRT.Description.Format);
-                            if (_resolvedRTKeyedMutex != null)
-                                _resolvedRTKeyedMutex.Release(1);
+                            resolvedRtKeyedMutex?.Acquire(0, int.MaxValue);
+                            currentRt.Device.ImmediateContext.ResolveSubresource(currentRt, 0, resolvedRt, 0, resolvedRt.Description.Format);
+                            resolvedRtKeyedMutex?.Release(1);
 
                             if (Request.Resize.HasValue)
                             {
-                                lock(_lock)
+                                lock(@lock)
                                 {
-                                    if (_resolvedRTKeyedMutex_Dev2 != null)
-                                        _resolvedRTKeyedMutex_Dev2.Acquire(1, int.MaxValue);
-                                    _saQuad.ShaderResource = _resolvedSRV;
-                                    _saQuad.RenderTargetView = _resizedRTV;
-                                    _saQuad.RenderTarget = _resizedRT;
-                                    _saQuad.Render();
-                                    if (_resolvedRTKeyedMutex_Dev2 != null)
-                                        _resolvedRTKeyedMutex_Dev2.Release(0);
+                                    if (resolvedRtKeyedMutexDev2 != null)
+                                        resolvedRtKeyedMutexDev2.Acquire(1, int.MaxValue);
+                                    saQuad.ShaderResource = resolvedSrv;
+                                    saQuad.RenderTargetView = resizedRtv;
+                                    saQuad.RenderTarget = resizedRt;
+                                    saQuad.Render();
+                                    if (resolvedRtKeyedMutexDev2 != null)
+                                        resolvedRtKeyedMutexDev2.Release(0);
                                 }
 
                                 // set sourceTexture to the resized RT
-                                sourceTexture = _resizedRT;
+                                sourceTexture = resizedRt;
                             }
                             else
                             {
                                 // Make sourceTexture be the resolved texture
-                                if (_resolvedRTShared != null)
-                                    sourceTexture = _resolvedRTShared;
-                                else
-                                    sourceTexture = _resolvedRT;
+                                sourceTexture = resolvedRtShared ?? resolvedRt;
                             }
                         }
                         else
                         {
                             // Copy the resource into the shared texture
-                            if (_resolvedRTKeyedMutex != null) _resolvedRTKeyedMutex.Acquire(0, int.MaxValue);
-                            currentRT.Device.ImmediateContext.CopySubresourceRegion(currentRT, 0, null, _resolvedRT, 0);
-                            if (_resolvedRTKeyedMutex != null) _resolvedRTKeyedMutex.Release(1);
+                            resolvedRtKeyedMutex?.Acquire(0, int.MaxValue);
+                            currentRt.Device.ImmediateContext.CopySubresourceRegion(currentRt, 0, null, resolvedRt, 0);
+                            resolvedRtKeyedMutex?.Release(1);
 
-                            if (_resolvedRTShared != null)
-                                sourceTexture = _resolvedRTShared;
-                            else
-                                sourceTexture = _resolvedRT;
+                            sourceTexture = resolvedRtShared ?? resolvedRt;
                         }
 
                         // Copy to memory and send back to host process on a background thread so that we do not cause any delay in the rendering pipeline
-                        _requestCopy = this.Request.Clone(); // this.Request gets set to null, so copy the Request for use in the thread
+                        requestCopy = Request.Clone(); // this.Request gets set to null, so copy the Request for use in the thread
 
                         // Prevent the request from being processed a second time
-                        this.Request = null;
+                        Request = null;
 
-                        bool acquireLock = sourceTexture == _resolvedRTShared;
+                        var acquireLock = sourceTexture == resolvedRtShared;
 
 
-                        ThreadPool.QueueUserWorkItem(new WaitCallback((o) =>
+                        ThreadPool.QueueUserWorkItem(o =>
                         {
                             // Acquire lock on second device
-                            if (acquireLock && _resolvedRTKeyedMutex_Dev2 != null)
-                                _resolvedRTKeyedMutex_Dev2.Acquire(1, int.MaxValue);
+                            if (acquireLock && resolvedRtKeyedMutexDev2 != null)
+                                resolvedRtKeyedMutexDev2.Acquire(1, int.MaxValue);
 
-                            lock (_lock)
+                            lock (@lock)
                             {
                                 // Copy the subresource region, we are dealing with a flat 2D texture with no MipMapping, so 0 is the subresource index
-                                sourceTexture.Device.ImmediateContext.CopySubresourceRegion(sourceTexture, 0, new ResourceRegion()
+                                sourceTexture.Device.ImmediateContext.CopySubresourceRegion(sourceTexture, 0, new ResourceRegion
                                 {
                                     Top = captureRegion.Top,
                                     Bottom = captureRegion.Bottom,
@@ -472,106 +457,106 @@ namespace Capture.Hook
                                     Right = captureRegion.Right,
                                     Front = 0,
                                     Back = 1 // Must be 1 or only black will be copied
-                                }, _finalRT, 0, 0, 0, 0);
+                                }, finalRt, 0);
 
                                 // Release lock upon shared surface on second device
-                                if (acquireLock && _resolvedRTKeyedMutex_Dev2 != null)
-                                    _resolvedRTKeyedMutex_Dev2.Release(0);
+                                if (acquireLock && resolvedRtKeyedMutexDev2 != null)
+                                    resolvedRtKeyedMutexDev2.Release(0);
 
-                                _finalRT.Device.ImmediateContext.End(_query);
-                                _queryIssued = true;
-                                while (_finalRT.Device.ImmediateContext.GetData(_query).ReadByte() != 1)
+                                finalRt.Device.ImmediateContext.End(query);
+                                queryIssued = true;
+                                while (finalRt.Device.ImmediateContext.GetData(query).ReadByte() != 1)
                                 {
                                     // Spin (usually only one cycle or no spin takes place)
                                 }
 
-                                DateTime startCopyToSystemMemory = DateTime.Now;
+                                var startCopyToSystemMemory = DateTime.Now;
                                 try
                                 {
-                                    DataBox db = default(DataBox);
-                                    if (_requestCopy.Format == ImageFormat.PixelData)
+                                    var db = default(DataBox);
+                                    if (requestCopy.Format == ImageFormat.PixelData)
                                     {
-                                        db = _finalRT.Device.ImmediateContext.MapSubresource(_finalRT, 0, MapMode.Read, SharpDX.Direct3D11.MapFlags.DoNotWait);
-                                        _finalRTMapped = true;
+                                        db = finalRt.Device.ImmediateContext.MapSubresource(finalRt, 0, MapMode.Read, MapFlags.DoNotWait);
+                                        finalRtMapped = true;
                                     }
-                                    _queryIssued = false;
+                                    queryIssued = false;
 
                                     try
                                     {
-                                        using (MemoryStream ms = new MemoryStream())
+                                        using (var ms = new MemoryStream())
                                         {
-                                            switch (_requestCopy.Format)
+                                            switch (requestCopy.Format)
                                             {
                                                 case ImageFormat.Bitmap:
                                                 case ImageFormat.Jpeg:
                                                 case ImageFormat.Png:
-                                                    ToStream(_finalRT.Device.ImmediateContext, _finalRT, _requestCopy.Format, ms);
+                                                    ToStream(finalRt.Device.ImmediateContext, finalRt, requestCopy.Format, ms);
                                                     break;
                                                 case ImageFormat.PixelData:
                                                     if (db.DataPointer != IntPtr.Zero)
                                                     {
-                                                        ProcessCapture(_finalRT.Description.Width, _finalRT.Description.Height, db.RowPitch, System.Drawing.Imaging.PixelFormat.Format32bppArgb, db.DataPointer, _requestCopy);
+                                                        ProcessCapture(finalRt.Description.Width, finalRt.Description.Height, db.RowPitch, PixelFormat.Format32bppArgb, db.DataPointer, requestCopy);
                                                     }
                                                     return;
                                             }
                                             ms.Position = 0;
-                                            ProcessCapture(ms, _requestCopy);
+                                            ProcessCapture(ms, requestCopy);
                                         }
                                     }
                                     finally
                                     {
-                                        this.DebugMessage("PresentHook: Copy to System Memory time: " + (DateTime.Now - startCopyToSystemMemory).ToString());
+                                        DebugMessage("PresentHook: Copy to System Memory time: " + (DateTime.Now - startCopyToSystemMemory));
                                         
-                                        if (_finalRTMapped)
+                                        if (finalRtMapped)
                                         {
-                                            lock (_lock)
+                                            lock (@lock)
                                             {
-                                                _finalRT.Device.ImmediateContext.UnmapSubresource(_finalRT, 0);
-                                                _finalRTMapped = false;
+                                                finalRt.Device.ImmediateContext.UnmapSubresource(finalRt, 0);
+                                                finalRtMapped = false;
                                             }
                                         }
                                     }
                                 }
-                                catch (SharpDX.SharpDXException)
+                                catch (SharpDXException)
                                 {
                                     // Catch DXGI_ERROR_WAS_STILL_DRAWING and ignore - the data isn't available yet
                                 }
                             }
-                        }));
+                        });
                         
 
                         // Note: it would be possible to capture multiple frames and process them in a background thread
                     }
-                    this.DebugMessage("PresentHook: Copy BackBuffer time: " + (DateTime.Now - startTime).ToString());
-                    this.DebugMessage("PresentHook: Request End");
+                    DebugMessage("PresentHook: Copy BackBuffer time: " + (DateTime.Now - startTime));
+                    DebugMessage("PresentHook: Request End");
                 }
                 #endregion
 
                 #region Draw overlay (after screenshot so we don't capture overlay as well)
                 var displayOverlays = Overlays;
-                if (this.Config.ShowOverlay && displayOverlays != null)
+                if (Config.ShowOverlay && displayOverlays != null)
                 {
                     // Initialise Overlay Engine
-                    if (_swapChainPointer != swapChain.NativePointer || _overlayEngine == null
+                    if (swapChainPointer != swapChainIn.NativePointer || overlayEngine == null
                         || IsOverlayUpdatePending)
                     {
-                        if (_overlayEngine != null)
-                            _overlayEngine.Dispose();
+                        if (overlayEngine != null)
+                            overlayEngine.Dispose();
 
-                        _overlayEngine = new DX11.DXOverlayEngine();
-                        _overlayEngine.Overlays.AddRange((IEnumerable<IOverlay>)displayOverlays);
-                        _overlayEngine.Initialise(swapChain);
+                        overlayEngine = new DXOverlayEngine();
+                        overlayEngine.Overlays.AddRange(displayOverlays);
+                        overlayEngine.Initialise(swapChainIn);
 
-                        _swapChainPointer = swapChain.NativePointer;
+                        swapChainPointer = swapChainIn.NativePointer;
 
                         IsOverlayUpdatePending = false;
                     }
                     // Draw Overlay(s)
-                    if (_overlayEngine != null)
+                    if (overlayEngine != null)
                     {
-                        foreach (var overlay in _overlayEngine.Overlays)
+                        foreach (var overlay in overlayEngine.Overlays)
                             overlay.Frame();
-                        _overlayEngine.Draw();
+                        overlayEngine.Draw();
                     }
                 }
                 #endregion
@@ -579,20 +564,20 @@ namespace Capture.Hook
             catch (Exception e)
             {
                 // If there is an error we do not want to crash the hooked application, so swallow the exception
-                this.DebugMessage("PresentHook: Exeception: " + e.GetType().FullName + ": " + e.ToString());
+                DebugMessage("PresentHook: Exception: " + e.GetType().FullName + ": " + e);
                 //return unchecked((int)0x8000FFFF); //E_UNEXPECTED
             }
 
             // As always we need to call the original method, note that EasyHook will automatically skip the hook and call the original method
             // i.e. calling it here will not cause a stack overflow into this function
-            return DXGISwapChain_PresentHook.Original(swapChainPtr, syncInterval, flags);
+            return dxgiSwapChainPresentHook.Original(swapChainPtr, syncInterval, flags);
         }
 
-        Capture.Hook.DX11.DXOverlayEngine _overlayEngine;
+        private DXOverlayEngine overlayEngine;
 
-        IntPtr _swapChainPointer = IntPtr.Zero;
+        private IntPtr swapChainPointer = IntPtr.Zero;
 
-        SharpDX.WIC.ImagingFactory2 wicFactory;
+        private ImagingFactory2 wicFactory;
 
         /// <summary>
         /// Copies to a stream using WIC. The format is converted if necessary.
@@ -601,19 +586,18 @@ namespace Capture.Hook
         /// <param name="texture"></param>
         /// <param name="outputFormat"></param>
         /// <param name="stream"></param>
-        public void ToStream(SharpDX.Direct3D11.DeviceContext context, Texture2D texture, ImageFormat outputFormat, Stream stream)
+        private void ToStream(DeviceContext context, Texture2D texture, ImageFormat outputFormat, Stream stream)
         {
             if (wicFactory == null)
-                wicFactory = ToDispose(new SharpDX.WIC.ImagingFactory2());
+                wicFactory = ToDispose(new ImagingFactory2());
 
-            DataStream dataStream;
             var dataBox = context.MapSubresource(
                 texture,
                 0,
                 0,
                 MapMode.Read,
-                SharpDX.Direct3D11.MapFlags.None,
-                out dataStream);
+                MapFlags.None,
+                out var dataStream);
             try
             {
                 var dataRectangle = new DataRectangle
@@ -627,7 +611,7 @@ namespace Capture.Hook
                 if (format == Guid.Empty)
                     return;
 
-                using (var bitmap = new SharpDX.WIC.Bitmap(
+                using (var bitmap = new Bitmap(
                     wicFactory,
                     texture.Description.Width,
                     texture.Description.Height,
@@ -636,25 +620,31 @@ namespace Capture.Hook
                 {
                     stream.Position = 0;
 
-                    SharpDX.WIC.BitmapEncoder bitmapEncoder = null;
+                    BitmapEncoder bitmapEncoder = null;
                     switch (outputFormat)
                     {
                         case ImageFormat.Bitmap:
-                            bitmapEncoder = new SharpDX.WIC.BmpBitmapEncoder(wicFactory, stream);
+                            bitmapEncoder = new BmpBitmapEncoder(wicFactory, stream);
                             break;
+                        
                         case ImageFormat.Jpeg:
-                            bitmapEncoder = new SharpDX.WIC.JpegBitmapEncoder(wicFactory, stream);
+                            bitmapEncoder = new JpegBitmapEncoder(wicFactory, stream);
                             break;
+                        
                         case ImageFormat.Png:
-                            bitmapEncoder = new SharpDX.WIC.PngBitmapEncoder(wicFactory, stream);
+                            bitmapEncoder = new PngBitmapEncoder(wicFactory, stream);
                             break;
+                        
+                        case ImageFormat.PixelData:
+                            break;
+                        
                         default:
                             return;
                     }
 
                     try
                     {
-                        using (var bitmapFrameEncode = new SharpDX.WIC.BitmapFrameEncode(bitmapEncoder))
+                        using (var bitmapFrameEncode = new BitmapFrameEncode(bitmapEncoder))
                         {
                             bitmapFrameEncode.Initialize();
                             bitmapFrameEncode.SetSize(bitmap.Size.Width, bitmap.Size.Height);
@@ -664,17 +654,17 @@ namespace Capture.Hook
                             if (pixelFormat != format)
                             {
                                 // IWICFormatConverter
-                                using (var converter = new SharpDX.WIC.FormatConverter(wicFactory))
+                                using (var converter = new FormatConverter(wicFactory))
                                 {
                                     if (converter.CanConvert(format, pixelFormat))
                                     {
-                                        converter.Initialize(bitmap, SharpDX.WIC.PixelFormat.Format24bppBGR, SharpDX.WIC.BitmapDitherType.None, null, 0, SharpDX.WIC.BitmapPaletteType.MedianCut);
+                                        converter.Initialize(bitmap, SharpDX.WIC.PixelFormat.Format24bppBGR, BitmapDitherType.None, null, 0, BitmapPaletteType.MedianCut);
                                         bitmapFrameEncode.SetPixelFormat(ref pixelFormat);
                                         bitmapFrameEncode.WriteSource(converter);
                                     }
                                     else
                                     {
-                                        this.DebugMessage(string.Format("Unable to convert Direct3D texture format {0} to a suitable WIC format", texture.Description.Format.ToString()));
+                                        DebugMessage($"Unable to convert Direct3D texture format {texture.Description.Format.ToString()} to a suitable WIC format");
                                         return;
                                     }
                                 }
@@ -684,12 +674,12 @@ namespace Capture.Hook
                                 bitmapFrameEncode.WriteSource(bitmap);
                             }
                             bitmapFrameEncode.Commit();
-                            bitmapEncoder.Commit();
+                            bitmapEncoder?.Commit();
                         }
                     }
                     finally
                     {
-                        bitmapEncoder.Dispose();
+                        bitmapEncoder?.Dispose();
                     }
                 }
             }
@@ -700,119 +690,201 @@ namespace Capture.Hook
         }
 
 
-        public static Guid PixelFormatFromFormat(SharpDX.DXGI.Format format)
+        private static Guid PixelFormatFromFormat(Format format)
         {
             switch (format)
             {
-                case SharpDX.DXGI.Format.R32G32B32A32_Typeless:
-                case SharpDX.DXGI.Format.R32G32B32A32_Float:
+                case Format.R32G32B32A32_Typeless:
+                case Format.R32G32B32A32_Float:
                     return SharpDX.WIC.PixelFormat.Format128bppRGBAFloat;
-                case SharpDX.DXGI.Format.R32G32B32A32_UInt:
-                case SharpDX.DXGI.Format.R32G32B32A32_SInt:
+                case Format.R32G32B32A32_UInt:
+                case Format.R32G32B32A32_SInt:
                     return SharpDX.WIC.PixelFormat.Format128bppRGBAFixedPoint;
-                case SharpDX.DXGI.Format.R32G32B32_Typeless:
-                case SharpDX.DXGI.Format.R32G32B32_Float:
+                case Format.R32G32B32_Typeless:
+                case Format.R32G32B32_Float:
                     return SharpDX.WIC.PixelFormat.Format96bppRGBFloat;
-                case SharpDX.DXGI.Format.R32G32B32_UInt:
-                case SharpDX.DXGI.Format.R32G32B32_SInt:
+                case Format.R32G32B32_UInt:
+                case Format.R32G32B32_SInt:
                     return SharpDX.WIC.PixelFormat.Format96bppRGBFixedPoint;
-                case SharpDX.DXGI.Format.R16G16B16A16_Typeless:
-                case SharpDX.DXGI.Format.R16G16B16A16_Float:
-                case SharpDX.DXGI.Format.R16G16B16A16_UNorm:
-                case SharpDX.DXGI.Format.R16G16B16A16_UInt:
-                case SharpDX.DXGI.Format.R16G16B16A16_SNorm:
-                case SharpDX.DXGI.Format.R16G16B16A16_SInt:
+                case Format.R16G16B16A16_Typeless:
+                case Format.R16G16B16A16_Float:
+                case Format.R16G16B16A16_UNorm:
+                case Format.R16G16B16A16_UInt:
+                case Format.R16G16B16A16_SNorm:
+                case Format.R16G16B16A16_SInt:
                     return SharpDX.WIC.PixelFormat.Format64bppRGBA;
-                case SharpDX.DXGI.Format.R32G32_Typeless:
-                case SharpDX.DXGI.Format.R32G32_Float:
-                case SharpDX.DXGI.Format.R32G32_UInt:
-                case SharpDX.DXGI.Format.R32G32_SInt:
-                case SharpDX.DXGI.Format.R32G8X24_Typeless:
-                case SharpDX.DXGI.Format.D32_Float_S8X24_UInt:
-                case SharpDX.DXGI.Format.R32_Float_X8X24_Typeless:
-                case SharpDX.DXGI.Format.X32_Typeless_G8X24_UInt:
+                case Format.R32G32_Typeless:
+                case Format.R32G32_Float:
+                case Format.R32G32_UInt:
+                case Format.R32G32_SInt:
+                case Format.R32G8X24_Typeless:
+                case Format.D32_Float_S8X24_UInt:
+                case Format.R32_Float_X8X24_Typeless:
+                case Format.X32_Typeless_G8X24_UInt:
                     return Guid.Empty;
-                case SharpDX.DXGI.Format.R10G10B10A2_Typeless:
-                case SharpDX.DXGI.Format.R10G10B10A2_UNorm:
-                case SharpDX.DXGI.Format.R10G10B10A2_UInt:
+                case Format.R10G10B10A2_Typeless:
+                case Format.R10G10B10A2_UNorm:
+                case Format.R10G10B10A2_UInt:
                     return SharpDX.WIC.PixelFormat.Format32bppRGBA1010102;
-                case SharpDX.DXGI.Format.R11G11B10_Float:
+                case Format.R11G11B10_Float:
                     return Guid.Empty;
-                case SharpDX.DXGI.Format.R8G8B8A8_Typeless:
-                case SharpDX.DXGI.Format.R8G8B8A8_UNorm:
-                case SharpDX.DXGI.Format.R8G8B8A8_UNorm_SRgb:
-                case SharpDX.DXGI.Format.R8G8B8A8_UInt:
-                case SharpDX.DXGI.Format.R8G8B8A8_SNorm:
-                case SharpDX.DXGI.Format.R8G8B8A8_SInt:
+                case Format.R8G8B8A8_Typeless:
+                case Format.R8G8B8A8_UNorm:
+                case Format.R8G8B8A8_UNorm_SRgb:
+                case Format.R8G8B8A8_UInt:
+                case Format.R8G8B8A8_SNorm:
+                case Format.R8G8B8A8_SInt:
                     return SharpDX.WIC.PixelFormat.Format32bppRGBA;
-                case SharpDX.DXGI.Format.R16G16_Typeless:
-                case SharpDX.DXGI.Format.R16G16_Float:
-                case SharpDX.DXGI.Format.R16G16_UNorm:
-                case SharpDX.DXGI.Format.R16G16_UInt:
-                case SharpDX.DXGI.Format.R16G16_SNorm:
-                case SharpDX.DXGI.Format.R16G16_SInt:
+                case Format.R16G16_Typeless:
+                case Format.R16G16_Float:
+                case Format.R16G16_UNorm:
+                case Format.R16G16_UInt:
+                case Format.R16G16_SNorm:
+                case Format.R16G16_SInt:
                     return Guid.Empty;
-                case SharpDX.DXGI.Format.R32_Typeless:
-                case SharpDX.DXGI.Format.D32_Float:
-                case SharpDX.DXGI.Format.R32_Float:
-                case SharpDX.DXGI.Format.R32_UInt:
-                case SharpDX.DXGI.Format.R32_SInt:
+                case Format.R32_Typeless:
+                case Format.D32_Float:
+                case Format.R32_Float:
+                case Format.R32_UInt:
+                case Format.R32_SInt:
                     return Guid.Empty;
-                case SharpDX.DXGI.Format.R24G8_Typeless:
-                case SharpDX.DXGI.Format.D24_UNorm_S8_UInt:
-                case SharpDX.DXGI.Format.R24_UNorm_X8_Typeless:
+                case Format.R24G8_Typeless:
+                case Format.D24_UNorm_S8_UInt:
+                case Format.R24_UNorm_X8_Typeless:
                     return SharpDX.WIC.PixelFormat.Format32bppGrayFloat;
-                case SharpDX.DXGI.Format.X24_Typeless_G8_UInt:
-                case SharpDX.DXGI.Format.R9G9B9E5_Sharedexp:
-                case SharpDX.DXGI.Format.R8G8_B8G8_UNorm:
-                case SharpDX.DXGI.Format.G8R8_G8B8_UNorm:
+                case Format.X24_Typeless_G8_UInt:
+                case Format.R9G9B9E5_Sharedexp:
+                case Format.R8G8_B8G8_UNorm:
+                case Format.G8R8_G8B8_UNorm:
                     return Guid.Empty;
-                case SharpDX.DXGI.Format.B8G8R8A8_UNorm:
-                case SharpDX.DXGI.Format.B8G8R8X8_UNorm:
+                case Format.B8G8R8A8_UNorm:
+                case Format.B8G8R8X8_UNorm:
                     return SharpDX.WIC.PixelFormat.Format32bppBGRA;
-                case SharpDX.DXGI.Format.R10G10B10_Xr_Bias_A2_UNorm:
+                case Format.R10G10B10_Xr_Bias_A2_UNorm:
                     return SharpDX.WIC.PixelFormat.Format32bppBGR101010;
-                case SharpDX.DXGI.Format.B8G8R8A8_Typeless:
-                case SharpDX.DXGI.Format.B8G8R8A8_UNorm_SRgb:
-                case SharpDX.DXGI.Format.B8G8R8X8_Typeless:
-                case SharpDX.DXGI.Format.B8G8R8X8_UNorm_SRgb:
+                case Format.B8G8R8A8_Typeless:
+                case Format.B8G8R8A8_UNorm_SRgb:
+                case Format.B8G8R8X8_Typeless:
+                case Format.B8G8R8X8_UNorm_SRgb:
                     return SharpDX.WIC.PixelFormat.Format32bppBGRA;
-                case SharpDX.DXGI.Format.R8G8_Typeless:
-                case SharpDX.DXGI.Format.R8G8_UNorm:
-                case SharpDX.DXGI.Format.R8G8_UInt:
-                case SharpDX.DXGI.Format.R8G8_SNorm:
-                case SharpDX.DXGI.Format.R8G8_SInt:
+                case Format.R8G8_Typeless:
+                case Format.R8G8_UNorm:
+                case Format.R8G8_UInt:
+                case Format.R8G8_SNorm:
+                case Format.R8G8_SInt:
                     return Guid.Empty;
-                case SharpDX.DXGI.Format.R16_Typeless:
-                case SharpDX.DXGI.Format.R16_Float:
-                case SharpDX.DXGI.Format.D16_UNorm:
-                case SharpDX.DXGI.Format.R16_UNorm:
-                case SharpDX.DXGI.Format.R16_SNorm:
+                case Format.R16_Typeless:
+                case Format.R16_Float:
+                case Format.D16_UNorm:
+                case Format.R16_UNorm:
+                case Format.R16_SNorm:
                     return SharpDX.WIC.PixelFormat.Format16bppGrayHalf;
-                case SharpDX.DXGI.Format.R16_UInt:
-                case SharpDX.DXGI.Format.R16_SInt:
+                case Format.R16_UInt:
+                case Format.R16_SInt:
                     return SharpDX.WIC.PixelFormat.Format16bppGrayFixedPoint;
-                case SharpDX.DXGI.Format.B5G6R5_UNorm:
+                case Format.B5G6R5_UNorm:
                     return SharpDX.WIC.PixelFormat.Format16bppBGR565;
-                case SharpDX.DXGI.Format.B5G5R5A1_UNorm:
+                case Format.B5G5R5A1_UNorm:
                     return SharpDX.WIC.PixelFormat.Format16bppBGRA5551;
-                case SharpDX.DXGI.Format.B4G4R4A4_UNorm:
+                case Format.B4G4R4A4_UNorm:
                     return Guid.Empty;
 
-                case SharpDX.DXGI.Format.R8_Typeless:
-                case SharpDX.DXGI.Format.R8_UNorm:
-                case SharpDX.DXGI.Format.R8_UInt:
-                case SharpDX.DXGI.Format.R8_SNorm:
-                case SharpDX.DXGI.Format.R8_SInt:
+                case Format.R8_Typeless:
+                case Format.R8_UNorm:
+                case Format.R8_UInt:
+                case Format.R8_SNorm:
+                case Format.R8_SInt:
                     return SharpDX.WIC.PixelFormat.Format8bppGray;
-                case SharpDX.DXGI.Format.A8_UNorm:
+                case Format.A8_UNorm:
                     return SharpDX.WIC.PixelFormat.Format8bppAlpha;
-                case SharpDX.DXGI.Format.R1_UNorm:
+                case Format.R1_UNorm:
                     return SharpDX.WIC.PixelFormat.Format1bppIndexed;
 
+                case Format.Unknown:
+                    break;
+                case Format.BC1_Typeless:
+                    break;
+                case Format.BC1_UNorm:
+                    break;
+                case Format.BC1_UNorm_SRgb:
+                    break;
+                case Format.BC2_Typeless:
+                    break;
+                case Format.BC2_UNorm:
+                    break;
+                case Format.BC2_UNorm_SRgb:
+                    break;
+                case Format.BC3_Typeless:
+                    break;
+                case Format.BC3_UNorm:
+                    break;
+                case Format.BC3_UNorm_SRgb:
+                    break;
+                case Format.BC4_Typeless:
+                    break;
+                case Format.BC4_UNorm:
+                    break;
+                case Format.BC4_SNorm:
+                    break;
+                case Format.BC5_Typeless:
+                    break;
+                case Format.BC5_UNorm:
+                    break;
+                case Format.BC5_SNorm:
+                    break;
+                case Format.BC6H_Typeless:
+                    break;
+                case Format.BC6H_Uf16:
+                    break;
+                case Format.BC6H_Sf16:
+                    break;
+                case Format.BC7_Typeless:
+                    break;
+                case Format.BC7_UNorm:
+                    break;
+                case Format.BC7_UNorm_SRgb:
+                    break;
+                case Format.AYUV:
+                    break;
+                case Format.Y410:
+                    break;
+                case Format.Y416:
+                    break;
+                case Format.NV12:
+                    break;
+                case Format.P010:
+                    break;
+                case Format.P016:
+                    break;
+                case Format.Opaque420:
+                    break;
+                case Format.YUY2:
+                    break;
+                case Format.Y210:
+                    break;
+                case Format.Y216:
+                    break;
+                case Format.NV11:
+                    break;
+                case Format.AI44:
+                    break;
+                case Format.IA44:
+                    break;
+                case Format.P8:
+                    break;
+                case Format.A8P8:
+                    break;
+                case Format.P208:
+                    break;
+                case Format.V208:
+                    break;
+                case Format.V408:
+                    break;
                 default:
                     return Guid.Empty;
             }
+            
+            return Guid.Empty;
         }
     }
 

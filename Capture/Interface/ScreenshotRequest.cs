@@ -1,7 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Drawing;
 using System.Runtime.Remoting;
 using System.Security.Permissions;
@@ -26,12 +23,7 @@ namespace Capture.Interface
         {
         }
 
-        public ScreenshotRequest(Guid requestId, Rectangle region)
-            : this(requestId, region, null)
-        {
-        }
-
-        public ScreenshotRequest(Guid requestId, Rectangle region, Size? resize)
+        public ScreenshotRequest(Guid requestId, Rectangle region, Size? resize = null)
         {
             RequestId = requestId;
             RegionToCapture = region;
@@ -51,7 +43,7 @@ namespace Capture.Interface
             Dispose(false);
         }
 
-        private bool _disposed;
+        private bool disposed;
         public void Dispose()
         {
             Dispose(true);
@@ -60,13 +52,13 @@ namespace Capture.Interface
 
         protected virtual void Dispose(bool disposing)
         {
-            if (!_disposed)
+            if (!disposed)
             {
                 if (disposing)
                 {
                     Disconnect();
                 }
-                _disposed = true;
+                disposed = true;
             }
         }
 

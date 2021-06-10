@@ -1,17 +1,14 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 
 namespace Capture.Hook
 {
     public class TextDisplay
     {
-        long _startTickCount = 0;
+        private readonly long startTickCount;
 
         public TextDisplay()
         {
-            _startTickCount = DateTime.Now.Ticks;
+            startTickCount = DateTime.Now.Ticks;
             Display = true;
         }
 
@@ -20,14 +17,14 @@ namespace Capture.Hook
         /// </summary>
         public void Frame()
         {
-            if (Display && Math.Abs(DateTime.Now.Ticks - _startTickCount) > Duration.Ticks)
+            if (Display && Math.Abs(DateTime.Now.Ticks - startTickCount) > Duration.Ticks)
             {
                 Display = false;
             }
         }
 
-        public bool Display { get; set; }
-        public String Text { get; set; }
+        public bool Display { get; private set; }
+        public string Text { get; set; }
         public TimeSpan Duration { get; set; }
         public float Remaining
         {
@@ -35,12 +32,10 @@ namespace Capture.Hook
             {
                 if (Display)
                 {
-                    return (float)Math.Abs(DateTime.Now.Ticks - _startTickCount) / (float)Duration.Ticks;
+                    return Math.Abs(DateTime.Now.Ticks - startTickCount) / (float)Duration.Ticks;
                 }
-                else
-                {
-                    return 0;
-                }
+
+                return 0;
             }
         }
     }

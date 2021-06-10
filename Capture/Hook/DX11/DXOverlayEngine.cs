@@ -1,115 +1,107 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using Capture.Hook.Common;
-using SharpDX.Direct3D11;
 using SharpDX;
-using System.Diagnostics;
+using SharpDX.Direct3D11;
+using SharpDX.DXGI;
+using SharpDX.Mathematics.Interop;
+using Device = SharpDX.Direct3D11.Device;
 
 namespace Capture.Hook.DX11
 {
     internal class DXOverlayEngine: Component
     {
-        public List<IOverlay> Overlays { get; set; }
-        public bool DeferredContext
-        {
-            get
-            {
-                return _deviceContext.TypeInfo == DeviceContextType.Deferred;
-            }
-        }
+        public List<IOverlay> Overlays { get; private set; }
 
-        bool _initialised = false;
-        bool _initialising = false;
+        private bool DeferredContext => deviceContext.TypeInfo == DeviceContextType.Deferred;
 
-        Device _device;
-        DeviceContext _deviceContext;
-        Texture2D _renderTarget;
-        RenderTargetView _renderTargetView;
-        DXSprite _spriteEngine;
-        Dictionary<string, DXFont> _fontCache = new Dictionary<string, DXFont>();
-        Dictionary<Element, DXImage> _imageCache = new Dictionary<Element, DXImage>();
+        private bool initialised;
+        private bool initialising;
+
+        private Device device;
+        private DeviceContext deviceContext;
+        private Texture2D renderTarget;
+        private RenderTargetView renderTargetView;
+        private DXSprite spriteEngine;
+        private readonly Dictionary<string, DXFont> fontCache = new Dictionary<string, DXFont>();
+        private readonly Dictionary<Element, DXImage> imageCache = new Dictionary<Element, DXImage>();
 
         public DXOverlayEngine()
         {
             Overlays = new List<IOverlay>();
         }
 
-        private void EnsureInitiliased()
+        private void EnsureInitialized()
         {
-            if (!_initialised)
+            if (!initialised)
                 throw new InvalidOperationException("DXOverlayEngine must be initialised.");
         }
 
-        public bool Initialise(SharpDX.DXGI.SwapChain swapChain)
+        public bool Initialise(SwapChain swapChain)
         {
             return Initialise(swapChain.GetDevice<Device>(), swapChain.GetBackBuffer<Texture2D>(0));
         }
 
-        public bool Initialise(Device device, Texture2D renderTarget)
+        private bool Initialise(Device deviceIn, Texture2D renderTargetIn)
         {
-            if (_initialising)
+            if (initialising)
                 return false;
 
-            _initialising = true;
+            initialising = true;
             
             try
             {
 
-                _device = device;
-                _renderTarget = renderTarget;
+                device = deviceIn;
+                renderTarget = renderTargetIn;
                 try
                 {
-                    _deviceContext = ToDispose(new DeviceContext(_device));
+                    deviceContext = ToDispose(new DeviceContext(device));
                 }
                 catch (SharpDXException)
                 {
-                    _deviceContext = _device.ImmediateContext;
+                    deviceContext = device.ImmediateContext;
                 }
 
-                _renderTargetView = ToDispose(new RenderTargetView(_device, _renderTarget));
+                renderTargetView = ToDispose(new RenderTargetView(device, renderTarget));
 
                 //if (DeferredContext)
                 //{
-                //    ViewportF[] viewportf = { new ViewportF(0, 0, _renderTarget.Description.Width, _renderTarget.Description.Height, 0, 1) };
-                //    _deviceContext.Rasterizer.SetViewports(viewportf);
+                //    ViewportF[] viewportF = { new ViewportF(0, 0, _renderTarget.Description.Width, _renderTarget.Description.Height, 0, 1) };
+                //    _deviceContext.Rasterizer.SetViewports(viewportF);
                 //    _deviceContext.OutputMerger.SetTargets(_renderTargetView);
                 //}
 
-                _spriteEngine = new DXSprite(_device, _deviceContext);
-                if (!_spriteEngine.Initialize())
+                spriteEngine = new DXSprite(device, deviceContext);
+                if (!spriteEngine.Initialize())
                     return false;
 
                 // Initialise any resources required for overlay elements
                 InitialiseElementResources();
 
-                _initialised = true;
+                initialised = true;
                 return true;
             }
             finally
             {
-                _initialising = false;
+                initialising = false;
             }
         }
 
-        void InitialiseElementResources()
+        private void InitialiseElementResources()
         {
-            foreach (var overlay in Overlays)
+            foreach (var element in Overlays.SelectMany(overlay => overlay.Elements))
             {
-                foreach (var element in overlay.Elements)
+                switch (element)
                 {
-                    var textElement = element as TextElement;
-                    var imageElement = element as ImageElement;
-
-                    if (textElement != null)
-                    {
+                    case TextElement textElement:
                         GetFontForTextElement(textElement);
-                    }
-                    else if (imageElement != null)
-                    {
+                        break;
+                        
+                    case ImageElement imageElement:
                         GetImageForImageElement(imageElement);
-                    }
+                        break;
                 }
             }
         }
@@ -118,9 +110,9 @@ namespace Capture.Hook.DX11
         {
             //if (!DeferredContext)
             //{
-                SharpDX.Mathematics.Interop.RawViewportF[] viewportf = { new ViewportF(0, 0, _renderTarget.Description.Width, _renderTarget.Description.Height, 0, 1) };
-                _deviceContext.Rasterizer.SetViewports(viewportf);
-                _deviceContext.OutputMerger.SetTargets(_renderTargetView);
+                RawViewportF[] viewportF = { new ViewportF(0, 0, renderTarget.Description.Width, renderTarget.Description.Height, 0, 1) };
+                deviceContext.Rasterizer.SetViewports(viewportF);
+                deviceContext.OutputMerger.SetTargets(renderTargetView);
             //}
         }
 
@@ -129,34 +121,28 @@ namespace Capture.Hook.DX11
         /// </summary>
         public void Draw()
         {
-            EnsureInitiliased();
+            EnsureInitialized();
 
             Begin();
 
-            foreach (var overlay in Overlays)
+            foreach (var element in Overlays.Where(overlay => !overlay.Hidden)
+                .SelectMany(overlay => overlay.Elements.Where(element => !element.Hidden)))
             {
-                if (overlay.Hidden)
-                    continue;
-
-                foreach (var element in overlay.Elements)
+                switch (element)
                 {
-                    if (element.Hidden)
-                        continue;
-
-                    var textElement = element as TextElement;
-                    var imageElement = element as ImageElement;
-
-                    if (textElement != null)
+                    case TextElement textElement:
                     {
-                        DXFont font = GetFontForTextElement(textElement);
-                        if (font != null && !String.IsNullOrEmpty(textElement.Text))
-                            _spriteEngine.DrawString(textElement.Location.X, textElement.Location.Y, textElement.Text, textElement.Color, font);
+                        var font = GetFontForTextElement(textElement);
+                        if (font != null && !string.IsNullOrEmpty(textElement.Text))
+                            spriteEngine.DrawString(textElement.Location.X, textElement.Location.Y, textElement.Text, textElement.Color, font);
+                        break;
                     }
-                    else if (imageElement != null)
+                    case ImageElement imageElement:
                     {
-                        DXImage image = GetImageForImageElement(imageElement);
+                        var image = GetImageForImageElement(imageElement);
                         if (image != null)
-                            _spriteEngine.DrawImage(imageElement.Location.X, imageElement.Location.Y, imageElement.Scale, imageElement.Angle, imageElement.Tint, image);
+                            spriteEngine.DrawImage(imageElement.Location.X, imageElement.Location.Y, imageElement.Scale, imageElement.Angle, imageElement.Tint, image);
+                        break;
                     }
                 }
             }
@@ -168,37 +154,32 @@ namespace Capture.Hook.DX11
         {
             if (DeferredContext)
             {
-                var commandList = _deviceContext.FinishCommandList(true);
-                _device.ImmediateContext.ExecuteCommandList(commandList, true);
+                var commandList = deviceContext.FinishCommandList(true);
+                device.ImmediateContext.ExecuteCommandList(commandList, true);
                 commandList.Dispose();
             }
         }
 
-        DXFont GetFontForTextElement(TextElement element)
+        private DXFont GetFontForTextElement(TextElement element)
         {
-            DXFont result = null;
+            var fontKey = $"{element.Font.Name}{element.Font.Size}{element.Font.Style}{element.AntiAliased}";
 
-            string fontKey = String.Format("{0}{1}{2}{3}", element.Font.Name, element.Font.Size, element.Font.Style, element.AntiAliased);
-
-            if (!_fontCache.TryGetValue(fontKey, out result))
-            {
-                result = ToDispose(new DXFont(_device, _deviceContext));
-                result.Initialize(element.Font.Name, element.Font.Size, element.Font.Style, element.AntiAliased);
-                _fontCache[fontKey] = result;
-            }
+            if (fontCache.TryGetValue(fontKey, out var result)) return result;
+            
+            result = ToDispose(new DXFont(device, deviceContext));
+            result.Initialize(element.Font.Name, element.Font.Size, element.Font.Style, element.AntiAliased);
+            fontCache[fontKey] = result;
+            
             return result;
         }
 
-        DXImage GetImageForImageElement(ImageElement element)
+        private DXImage GetImageForImageElement(ImageElement element)
         {
-            DXImage result = null;
-
-            if (!_imageCache.TryGetValue(element, out result))
-            {
-                result = ToDispose(new DXImage(_device, _deviceContext));
-                result.Initialise(element.Bitmap);
-                _imageCache[element] = result;
-            }
+            if (imageCache.TryGetValue(element, out var result)) return result;
+            
+            result = ToDispose(new DXImage(device, deviceContext));
+            result.Initialise(element.Bitmap);
+            imageCache[element] = result;
 
             return result;
         }
@@ -211,14 +192,8 @@ namespace Capture.Hook.DX11
         {
             if (true)
             {
-                _device = null;
+                device = null;
             }
-        }
-
-        void SafeDispose(DisposeBase disposableObj)
-        {
-            if (disposableObj != null)
-                disposableObj.Dispose();
         }
     }
 }

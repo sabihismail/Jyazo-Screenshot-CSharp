@@ -1,18 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 
 namespace Capture.Hook.Common
 {
     [Serializable]
     public class Overlay: IOverlay
     {
-        List<IOverlayElement> _elements = new List<IOverlayElement>();
+        private List<IOverlayElement> elements = new List<IOverlayElement>();
         public virtual List<IOverlayElement> Elements
         {
-            get { return _elements; }
-            set { _elements = value; }
+            get => elements;
+            set => elements = value;
         }
 
         public virtual bool Hidden

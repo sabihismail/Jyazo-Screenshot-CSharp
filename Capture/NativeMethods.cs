@@ -1,16 +1,11 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Runtime.InteropServices;
 
 namespace Capture
 {
     [System.Security.SuppressUnmanagedCodeSecurity()]
-    internal sealed class NativeMethods
+    internal static class NativeMethods
     {
-        private NativeMethods() { }
-
         internal static bool IsWindowInForeground(IntPtr hWnd)
         {
             return hWnd == GetForegroundWindow();
@@ -90,7 +85,7 @@ namespace Capture
             Maximize = 3,
             /// <summary>Displays a window in its most recent size and position.
             /// This value is similar to "ShowNormal", except the window is not
-            /// actived.</summary>
+            /// activated.</summary>
             /// <remarks>See SW_SHOWNOACTIVATE</remarks>
             ShowNormalNoActivate = 4,
             /// <summary>Activates the window and displays it in its current size
@@ -132,7 +127,7 @@ namespace Capture
         /// The GetForegroundWindow function returns a handle to the foreground window.
         /// </summary>
         [DllImport("user32.dll")]
-        internal static extern IntPtr GetForegroundWindow();
+        private static extern IntPtr GetForegroundWindow();
 
         [DllImport("user32.dll")]
         [return: MarshalAs(UnmanagedType.Bool)]

@@ -1,9 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.Remoting;
-using System.Security.Permissions;
-using System.Text;
 
 namespace Capture.Hook.Common
 {

@@ -1,9 +1,5 @@
 ﻿using Capture.Hook.Common;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Capture.Interface
 {
@@ -15,10 +11,12 @@ namespace Capture.Interface
     {
         public IOverlay Overlay { get; set; }
 
+        /*
         public bool IsUpdatePending { get; set; }
 
         public DrawOverlayEventArgs()
         {
         }
+        */
     }
 }

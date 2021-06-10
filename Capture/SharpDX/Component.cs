@@ -1,13 +1,7 @@
 ﻿using System;
-using SharpDX;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace SharpDX
 {
-
     // From SharpDX.Toolkit
 
     /// <summary>
@@ -19,7 +13,7 @@ namespace SharpDX
         /// Gets or sets the disposables.
         /// </summary>
         /// <value>The disposables.</value>
-        protected DisposeCollector DisposeCollector { get; set; }
+        private DisposeCollector DisposeCollector { get; set; }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Component"/> class.
@@ -50,9 +44,10 @@ namespace SharpDX
         /// <value>
         /// 	<c>true</c> if this instance is disposed; otherwise, <c>false</c>.
         /// </value>
-        protected internal bool IsDisposed { get; private set; }
+        private bool IsDisposed { get; set; }
 
-        protected internal bool IsDisposing { get; private set; }
+        // ReSharper disable once UnusedAutoPropertyAccessor.Local
+        private bool IsDisposing { get; set; }
 
         /// <summary>
         /// Occurs when when Dispose is called.
@@ -64,20 +59,16 @@ namespace SharpDX
         /// </summary>
         public void Dispose()
         {
-            if (!IsDisposed)
-            {
-                IsDisposing = true;
+            if (IsDisposed) return;
+            
+            IsDisposing = true;
 
-                // Call the disposing event.
-                var handler = Disposing;
-                if (handler != null)
-                {
-                    handler(this, EventArgs.Empty);
-                }
+            // Call the disposing event.
+            var handler = Disposing;
+            handler?.Invoke(this, EventArgs.Empty);
 
-                Dispose(true);
-                IsDisposed = true;
-            }
+            Dispose(true);
+            IsDisposed = true;
         }
 
         /// <summary>
@@ -87,35 +78,32 @@ namespace SharpDX
         /// disposed of in addition to unmanaged resources.</param>
         protected virtual void Dispose(bool disposeManagedResources)
         {
-            if (disposeManagedResources)
-            {
-                // Dispose all ComObjects
-                if (DisposeCollector != null)
-                    DisposeCollector.Dispose();
-                DisposeCollector = null;
-            }
+            if (!disposeManagedResources) return;
+            
+            // Dispose all ComObjects
+            DisposeCollector?.Dispose();
+            DisposeCollector = null;
         }
 
         /// <summary>
         /// Adds a disposable object to the list of the objects to dispose.
         /// </summary>
         /// <param name="toDisposeArg">To dispose.</param>
-        protected internal T ToDispose<T>(T toDisposeArg)
+        protected T ToDispose<T>(T toDisposeArg)
         {
-            if (!ReferenceEquals(toDisposeArg, null))
-            {
-                if (DisposeCollector == null)
-                    DisposeCollector = new DisposeCollector();
-                return DisposeCollector.Collect(toDisposeArg);
-            }
-            return default(T);
+            if (ReferenceEquals(toDisposeArg, null)) return default;
+            
+            if (DisposeCollector == null)
+                DisposeCollector = new DisposeCollector();
+            
+            return DisposeCollector.Collect(toDisposeArg);
         }
 
         /// <summary>
         /// Dispose a disposable object and set the reference to null. Removes this object from the ToDispose list.
         /// </summary>
         /// <param name="objectToDispose">Object to dispose.</param>
-        protected internal void RemoveAndDispose<T>(ref T objectToDispose)
+        protected void RemoveAndDispose<T>(ref T objectToDispose)
         {
             if (!ReferenceEquals(objectToDispose, null) && DisposeCollector != null)
                 DisposeCollector.RemoveAndDispose(ref objectToDispose);

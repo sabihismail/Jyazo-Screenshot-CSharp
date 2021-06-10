@@ -1,34 +1,31 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using Capture.Hook;
 using Capture.Interface;
 using System.Threading.Tasks;
 using System.Runtime.Remoting.Channels.Ipc;
+using System.Threading;
 
 namespace Capture
 {
     public class EntryPoint : EasyHook.IEntryPoint
     {
-        List<IDXHook> _directXHooks = new List<IDXHook>();
-        IDXHook _directXHook = null;
-        private CaptureInterface _interface;
-        private System.Threading.ManualResetEvent _runWait;
-        ClientCaptureInterfaceEventProxy _clientEventProxy = new ClientCaptureInterfaceEventProxy();
-        IpcServerChannel _clientServerChannel = null;
+        private readonly List<IDXHook> directXHooks = new List<IDXHook>();
+        private readonly CaptureInterface captureInterface;
+        private readonly ClientCaptureInterfaceEventProxy clientEventProxy = new ClientCaptureInterfaceEventProxy();
+        private readonly IpcServerChannel clientServerChannel = null;
+        
+        private IDXHook directXHook;
+        private ManualResetEvent runWait;
 
-        public EntryPoint(
-            EasyHook.RemoteHooking.IContext context,
-            String channelName,
-            CaptureConfig config)
+        public EntryPoint(string channelName)
         {
             // Get reference to IPC to host application
             // Note: any methods called or events triggered against _interface will execute in the host process.
-            _interface = EasyHook.RemoteHooking.IpcConnectClient<CaptureInterface>(channelName);
+            captureInterface = EasyHook.RemoteHooking.IpcConnectClient<CaptureInterface>(channelName);
 
             // We try to ping immediately, if it fails then injection fails
-            _interface.Ping();
+            captureInterface.Ping();
 
             #region Allow client event handlers (bi-directional IPC)
             
@@ -37,33 +34,30 @@ namespace Capture
             properties["name"] = channelName;
             properties["portName"] = channelName + Guid.NewGuid().ToString("N"); // random portName so no conflict with existing channels of channelName
 
-            System.Runtime.Remoting.Channels.BinaryServerFormatterSinkProvider binaryProv = new System.Runtime.Remoting.Channels.BinaryServerFormatterSinkProvider();
-            binaryProv.TypeFilterLevel = System.Runtime.Serialization.Formatters.TypeFilterLevel.Full;
+            var binaryProv = new System.Runtime.Remoting.Channels.BinaryServerFormatterSinkProvider
+            {
+                TypeFilterLevel = System.Runtime.Serialization.Formatters.TypeFilterLevel.Full
+            };
 
-            System.Runtime.Remoting.Channels.Ipc.IpcServerChannel _clientServerChannel = new System.Runtime.Remoting.Channels.Ipc.IpcServerChannel(properties, binaryProv);
-            System.Runtime.Remoting.Channels.ChannelServices.RegisterChannel(_clientServerChannel, false);
+            var clientServerChannelIn = new IpcServerChannel(properties, binaryProv);
+            System.Runtime.Remoting.Channels.ChannelServices.RegisterChannel(clientServerChannelIn, false);
             
             #endregion
         }
 
-        public void Run(
-            EasyHook.RemoteHooking.IContext context,
-            String channelName,
-            CaptureConfig config)
+        // ReSharper disable once UnusedMember.Global
+        public void Run(CaptureConfig config)
         {
             // When not using GAC there can be issues with remoting assemblies resolving correctly
             // this is a workaround that ensures that the current assembly is correctly associated
-            AppDomain currentDomain = AppDomain.CurrentDomain;
-            currentDomain.AssemblyResolve += (sender, args) =>
-            {
-                return this.GetType().Assembly.FullName == args.Name ? this.GetType().Assembly : null;
-            };
+            var currentDomain = AppDomain.CurrentDomain;
+            currentDomain.AssemblyResolve += (sender, args) => GetType().Assembly.FullName == args.Name ? GetType().Assembly : null;
 
             // NOTE: This is running in the target process
-            _interface.Message(MessageType.Information, "Injected into process Id:{0}.", EasyHook.RemoteHooking.GetCurrentProcessId());
+            captureInterface.Message(MessageType.Information, "Injected into process Id:{0}.", EasyHook.RemoteHooking.GetCurrentProcessId());
 
-            _runWait = new System.Threading.ManualResetEvent(false);
-            _runWait.Reset();
+            runWait = new ManualResetEvent(false);
+            runWait.Reset();
             try
             {
                 // Initialise the Hook
@@ -71,16 +65,16 @@ namespace Capture
                 {
                     return;
                 }
-                _interface.Disconnected += _clientEventProxy.DisconnectedProxyHandler;
+                captureInterface.Disconnected += clientEventProxy.DisconnectedProxyHandler;
 
                 // Important Note:
                 // accessing the _interface from within a _clientEventProxy event handler must always 
                 // be done on a different thread otherwise it will cause a deadlock
 
-                _clientEventProxy.Disconnected += () =>
+                clientEventProxy.Disconnected += () =>
                 {
                     // We can now signal the exit of the Run method
-                    _runWait.Set();
+                    runWait.Set();
                 };
 
                 // We start a thread here to periodically check if the host is still running
@@ -89,7 +83,7 @@ namespace Capture
 
                 // Wait until signaled for exit either when a Disconnect message from the host 
                 // or if the the check is alive has failed to Ping the host.
-                _runWait.WaitOne();
+                runWait.WaitOne();
 
                 // we need to tell the check host thread to exit (if it hasn't already)
                 StopCheckHostIsAliveThread();
@@ -99,114 +93,113 @@ namespace Capture
             }
             catch (Exception e)
             {
-                _interface.Message(MessageType.Error, "An unexpected error occured: {0}", e.ToString());
+                captureInterface.Message(MessageType.Error, "An unexpected error occured: {0}", e.ToString());
             }
             finally
             {
                 try
                 {
-                    _interface.Message(MessageType.Information, "Disconnecting from process {0}", EasyHook.RemoteHooking.GetCurrentProcessId());
+                    captureInterface.Message(MessageType.Information, "Disconnecting from process {0}", EasyHook.RemoteHooking.GetCurrentProcessId());
                 }
                 catch
                 {
+                    // ignored
                 }
 
                 // Remove the client server channel (that allows client event handlers)
-                System.Runtime.Remoting.Channels.ChannelServices.UnregisterChannel(_clientServerChannel);
+                System.Runtime.Remoting.Channels.ChannelServices.UnregisterChannel(clientServerChannel);
 
                 // Always sleep long enough for any remaining messages to complete sending
-                System.Threading.Thread.Sleep(100);
+                Thread.Sleep(100);
             }
         }
 
         private void DisposeDirectXHook()
         {
-            if (_directXHooks != null)
+            if (directXHooks != null)
             {
                 try
                 {
-                    _interface.Message(MessageType.Debug, "Disposing of hooks...");
+                    captureInterface.Message(MessageType.Debug, "Disposing of hooks...");
                 }
                 catch (System.Runtime.Remoting.RemotingException) { } // Ignore channel remoting errors
 
                 // Dispose of the hooks so they are removed
-                foreach (var dxHook in _directXHooks)
+                foreach (var dxHook in directXHooks)
                     dxHook.Dispose();
 
-                _directXHooks.Clear();
+                directXHooks.Clear();
             }
         }
 
         private bool InitialiseDirectXHook(CaptureConfig config)
         {
-            Direct3DVersion version = config.Direct3DVersion;
+            var version = config.Direct3DVersion;
 
-            List<Direct3DVersion> loadedVersions = new List<Direct3DVersion>();
+            var loadedVersions = new List<Direct3DVersion>();
 
-            bool isX64Process = EasyHook.RemoteHooking.IsX64Process(EasyHook.RemoteHooking.GetCurrentProcessId());
-            _interface.Message(MessageType.Information, "Remote process is a {0}-bit process.", isX64Process ? "64" : "32");
+            var isX64Process = EasyHook.RemoteHooking.IsX64Process(EasyHook.RemoteHooking.GetCurrentProcessId());
+            captureInterface.Message(MessageType.Information, "Remote process is a {0}-bit process.", isX64Process ? "64" : "32");
 
             try
             {
-                if (version == Direct3DVersion.AutoDetect || version == Direct3DVersion.Unknown)
+                if (version == Direct3DVersion.AUTO_DETECT || version == Direct3DVersion.UNKNOWN)
                 {
                     // Attempt to determine the correct version based on loaded module.
                     // In most cases this will work fine, however it is perfectly ok for an application to use a D3D10 device along with D3D11 devices
                     // so the version might matched might not be the one you want to use
-                    IntPtr d3D9Loaded = IntPtr.Zero;
-                    IntPtr d3D10Loaded = IntPtr.Zero;
-                    IntPtr d3D10_1Loaded = IntPtr.Zero;
-                    IntPtr d3D11Loaded = IntPtr.Zero;
-                    IntPtr d3D11_1Loaded = IntPtr.Zero;
+                    var d3D9Loaded = IntPtr.Zero;
+                    var d3D10Loaded = IntPtr.Zero;
+                    var d3D101Loaded = IntPtr.Zero;
+                    var d3D11Loaded = IntPtr.Zero;
+                    var d3D111Loaded = IntPtr.Zero;
 
-                    int delayTime = 100;
-                    int retryCount = 0;
-                    while (d3D9Loaded == IntPtr.Zero && d3D10Loaded == IntPtr.Zero && d3D10_1Loaded == IntPtr.Zero && d3D11Loaded == IntPtr.Zero && d3D11_1Loaded == IntPtr.Zero)
+                    var delayTime = 100;
+                    var retryCount = 0;
+                    while (d3D9Loaded == IntPtr.Zero && d3D10Loaded == IntPtr.Zero && d3D101Loaded == IntPtr.Zero && d3D11Loaded == IntPtr.Zero && d3D111Loaded == IntPtr.Zero)
                     {
                         retryCount++;
                         d3D9Loaded = NativeMethods.GetModuleHandle("d3d9.dll");
                         d3D10Loaded = NativeMethods.GetModuleHandle("d3d10.dll");
-                        d3D10_1Loaded = NativeMethods.GetModuleHandle("d3d10_1.dll");
+                        d3D101Loaded = NativeMethods.GetModuleHandle("d3d10_1.dll");
                         d3D11Loaded = NativeMethods.GetModuleHandle("d3d11.dll");
-                        d3D11_1Loaded = NativeMethods.GetModuleHandle("d3d11_1.dll");
-                        System.Threading.Thread.Sleep(delayTime);
+                        d3D111Loaded = NativeMethods.GetModuleHandle("d3d11_1.dll");
+                        Thread.Sleep(delayTime);
 
-                        if (retryCount * delayTime > 5000)
-                        {
-                            _interface.Message(MessageType.Error, "Unsupported Direct3D version, or Direct3D DLL not loaded within 5 seconds.");
-                            return false;
-                        }
+                        if (retryCount * delayTime <= 5000) continue;
+                        
+                        captureInterface.Message(MessageType.Error, "Unsupported Direct3D version, or Direct3D DLL not loaded within 5 seconds.");
+                        return false;
                     }
 
-                    version = Direct3DVersion.Unknown;
-                    if (d3D11_1Loaded != IntPtr.Zero)
+                    if (d3D111Loaded != IntPtr.Zero)
                     {
-                        _interface.Message(MessageType.Debug, "Autodetect found Direct3D 11.1");
-                        version = Direct3DVersion.Direct3D11_1;
+                        captureInterface.Message(MessageType.Debug, "Autodetect found Direct3D 11.1");
+                        version = Direct3DVersion.DIRECT_3D_11_1;
                         loadedVersions.Add(version);
                     }
                     if (d3D11Loaded != IntPtr.Zero)
                     {
-                        _interface.Message(MessageType.Debug, "Autodetect found Direct3D 11");
-                        version = Direct3DVersion.Direct3D11;
+                        captureInterface.Message(MessageType.Debug, "Autodetect found Direct3D 11");
+                        version = Direct3DVersion.DIRECT_3D_11;
                         loadedVersions.Add(version);
                     }
-                    if (d3D10_1Loaded != IntPtr.Zero)
+                    if (d3D101Loaded != IntPtr.Zero)
                     {
-                        _interface.Message(MessageType.Debug, "Autodetect found Direct3D 10.1");
-                        version = Direct3DVersion.Direct3D10_1;
+                        captureInterface.Message(MessageType.Debug, "Autodetect found Direct3D 10.1");
+                        version = Direct3DVersion.DIRECT_3D_10_1;
                         loadedVersions.Add(version);
                     }
                     if (d3D10Loaded != IntPtr.Zero)
                     {
-                        _interface.Message(MessageType.Debug, "Autodetect found Direct3D 10");
-                        version = Direct3DVersion.Direct3D10;
+                        captureInterface.Message(MessageType.Debug, "Autodetect found Direct3D 10");
+                        version = Direct3DVersion.DIRECT_3D_10;
                         loadedVersions.Add(version);
                     }
                     if (d3D9Loaded != IntPtr.Zero)
                     {
-                        _interface.Message(MessageType.Debug, "Autodetect found Direct3D 9");
-                        version = Direct3DVersion.Direct3D9;
+                        captureInterface.Message(MessageType.Debug, "Autodetect found Direct3D 9");
+                        version = Direct3DVersion.DIRECT_3D_9;
                         loadedVersions.Add(version);
                     }
                 }
@@ -221,30 +214,30 @@ namespace Capture
                     version = dxVersion;
                     switch (version)
                     {
-                        case Direct3DVersion.Direct3D9:
-                            _directXHook = new DXHookD3D9(_interface);
+                        case Direct3DVersion.DIRECT_3D_9:
+                            directXHook = new DXHookD3D9(captureInterface);
                             break;
-                        case Direct3DVersion.Direct3D10:
-                            _directXHook = new DXHookD3D10(_interface);
+                        case Direct3DVersion.DIRECT_3D_10:
+                            directXHook = new DXHookD3D10(captureInterface);
                             break;
-                        case Direct3DVersion.Direct3D10_1:
-                            _directXHook = new DXHookD3D10_1(_interface);
+                        case Direct3DVersion.DIRECT_3D_10_1:
+                            directXHook = new DXHookD3D101(captureInterface);
                             break;
-                        case Direct3DVersion.Direct3D11:
-                            _directXHook = new DXHookD3D11(_interface);
+                        case Direct3DVersion.DIRECT_3D_11:
+                            directXHook = new DXHookD3D11(captureInterface);
                             break;
                         //case Direct3DVersion.Direct3D11_1:
                         //    _directXHook = new DXHookD3D11_1(_interface);
                         //    return;
                         default:
-                            _interface.Message(MessageType.Error, "Unsupported Direct3D version: {0}", version);
+                            captureInterface.Message(MessageType.Error, "Unsupported Direct3D version: {0}", version);
                             return false;
                     }
 
-                    _directXHook.Config = config;
-                    _directXHook.Hook();
+                    directXHook.Config = config;
+                    directXHook.Hook();
 
-                    _directXHooks.Add(_directXHook);
+                    directXHooks.Add(directXHook);
                 }
 
                 return true;
@@ -253,41 +246,41 @@ namespace Capture
             catch (Exception e)
             {
                 // Notify the host/server application about this error
-                _interface.Message(MessageType.Error, "Error in InitialiseHook: {0}", e.ToString());
+                captureInterface.Message(MessageType.Error, "Error in InitialiseHook: {0}", e.ToString());
                 return false;
             }
         }
 
         #region Check Host Is Alive
 
-        Task _checkAlive;
-        long _stopCheckAlive = 0;
+        private Task checkAlive;
+        private long stopCheckAlive;
         
         /// <summary>
         /// Begin a background thread to check periodically that the host process is still accessible on its IPC channel
         /// </summary>
         private void StartCheckHostIsAliveThread()
         {
-            _checkAlive = new Task(() =>
+            checkAlive = new Task(() =>
             {
                 try
                 {
-                    while (System.Threading.Interlocked.Read(ref _stopCheckAlive) == 0)
+                    while (Interlocked.Read(ref stopCheckAlive) == 0)
                     {
-                        System.Threading.Thread.Sleep(1000);
+                        Thread.Sleep(1000);
 
                         // .NET Remoting exceptions will throw RemotingException
-                        _interface.Ping();
+                        captureInterface.Ping();
                     }
                 }
                 catch // We will assume that any exception means that the hooks need to be removed. 
                 {
                     // Signal the Run method so that it can exit
-                    _runWait.Set();
+                    runWait.Set();
                 }
             });
 
-            _checkAlive.Start();
+            checkAlive.Start();
         }
 
         /// <summary>
@@ -295,7 +288,7 @@ namespace Capture
         /// </summary>
         private void StopCheckHostIsAliveThread()
         {
-            System.Threading.Interlocked.Increment(ref _stopCheckAlive);
+            Interlocked.Increment(ref stopCheckAlive);
         }
 
         #endregion

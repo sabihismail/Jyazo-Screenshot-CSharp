@@ -1,18 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
-namespace Capture.Interface
+﻿namespace Capture.Interface
 {
     public enum Direct3DVersion
     {
-        Unknown,
-        AutoDetect,
-        Direct3D9,
-        Direct3D10,
-        Direct3D10_1,
-        Direct3D11,
-        Direct3D11_1,
+        UNKNOWN,
+        AUTO_DETECT,
+        DIRECT_3D_9,
+        DIRECT_3D_10,
+        DIRECT_3D_10_1,
+        DIRECT_3D_11,
+        DIRECT_3D_11_1,
     }
 }
