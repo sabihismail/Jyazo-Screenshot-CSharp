@@ -5,6 +5,6 @@
         Bitmap,
         Jpeg,
         Png,
-        PixelData,
+        PixelData
     }
 }

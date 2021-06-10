@@ -21,6 +21,7 @@ namespace Capture.Interface
             }
         }
 
+        // ReSharper disable once UnusedMember.Global
         public static Bitmap ToBitmap(this Screenshot screenshot)
         {
             return screenshot.Format == ImageFormat.PixelData 
@@ -46,12 +47,11 @@ namespace Capture.Interface
 
         public static byte[] ToByteArray(this Image img, System.Drawing.Imaging.ImageFormat format)
         {
-            using (var stream = new MemoryStream())
-            {
-                img.Save(stream, format);
-                stream.Close();
-                return stream.ToArray();
-            }
+            using var stream = new MemoryStream();
+            
+            img.Save(stream, format);
+            stream.Close();
+            return stream.ToArray();
         }
     }
 }

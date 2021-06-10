@@ -15,9 +15,11 @@ using Device = SharpDX.Direct3D11.Device;
 using MapFlags = SharpDX.Direct3D11.MapFlags;
 using PixelFormat = System.Drawing.Imaging.PixelFormat;
 using Resource = SharpDX.DXGI.Resource;
+// ReSharper disable UnusedMember.Global
 
 namespace Capture.Hook
 {
+    // ReSharper disable once UnusedType.Global
     internal enum D3D11DeviceVTbl : short
     {
         // IUnknown
@@ -65,7 +67,7 @@ namespace Capture.Hook
         GetDeviceRemovedReason = 39,
         GetImmediateContext = 40,
         SetExceptionMode = 41,
-        GetExceptionMode = 42,
+        GetExceptionMode = 42
     }
 
     /// <summary>
@@ -86,7 +88,7 @@ namespace Capture.Hook
         private Hook<DxgiSwapChainPresentDelegate> dxgiSwapChainPresentHook;
         private Hook<DxgiSwapChainResizeTargetDelegate> dxgiSwapChainResizeTargetHook;
 
-        private readonly object @lock = new object();
+        private readonly object mutex = new();
 
         #region Internal device resources
 
@@ -323,31 +325,32 @@ namespace Capture.Hook
             if (resolvedRt != null && resolvedRtKeyedMutexDev2 == null && resizeDevice == device)
                 resizeDevice = deviceIn;
 
-            if (resizeDevice != null && request.Resize != null && (resizedRt == null || (resizedRt.Device.NativePointer != resizeDevice.NativePointer || resizedRt.Description.Width != request.Resize.Value.Width || resizedRt.Description.Height != request.Resize.Value.Height)))
+            if (resizeDevice == null || request.Resize == null || resizedRt != null 
+                && resizedRt.Device.NativePointer == resizeDevice.NativePointer && resizedRt.Description.Width == request.Resize.Value.Width 
+                && resizedRt.Description.Height == request.Resize.Value.Height) return;
+            
+            // Create/Recreate resources for resizing
+            RemoveAndDispose(ref resizedRt);
+            RemoveAndDispose(ref resizedRtv);
+            RemoveAndDispose(ref saQuad);
+
+            resizedRt = ToDispose(new Texture2D(resizeDevice, new Texture2DDescription
             {
-                // Create/Recreate resources for resizing
-                RemoveAndDispose(ref resizedRt);
-                RemoveAndDispose(ref resizedRtv);
-                RemoveAndDispose(ref saQuad);
+                Format = Format.R8G8B8A8_UNorm, // Supports BMP/PNG/etc
+                Height = request.Resize.Value.Height,
+                Width = request.Resize.Value.Width,
+                ArraySize = 1,
+                SampleDescription = new SampleDescription(1, 0),
+                BindFlags = BindFlags.RenderTarget,
+                MipLevels = 1,
+                Usage = ResourceUsage.Default,
+                OptionFlags = ResourceOptionFlags.None
+            }));
 
-                resizedRt = ToDispose(new Texture2D(resizeDevice, new Texture2DDescription
-                {
-                    Format = Format.R8G8B8A8_UNorm, // Supports BMP/PNG/etc
-                    Height = request.Resize.Value.Height,
-                    Width = request.Resize.Value.Width,
-                    ArraySize = 1,
-                    SampleDescription = new SampleDescription(1, 0),
-                    BindFlags = BindFlags.RenderTarget,
-                    MipLevels = 1,
-                    Usage = ResourceUsage.Default,
-                    OptionFlags = ResourceOptionFlags.None
-                }));
+            resizedRtv = ToDispose(new RenderTargetView(resizeDevice, resizedRt));
 
-                resizedRtv = ToDispose(new RenderTargetView(resizeDevice, resizedRt));
-
-                saQuad = ToDispose(new ScreenAlignedQuadRenderer());
-                saQuad.Initialize(new DeviceManager(resizeDevice));
-            }
+            saQuad = ToDispose(new ScreenAlignedQuadRenderer());
+            saQuad.Initialize(new DeviceManager(resizeDevice));
         }
 
         /// <summary>
@@ -400,16 +403,14 @@ namespace Capture.Hook
 
                             if (Request.Resize.HasValue)
                             {
-                                lock(@lock)
+                                lock(mutex)
                                 {
-                                    if (resolvedRtKeyedMutexDev2 != null)
-                                        resolvedRtKeyedMutexDev2.Acquire(1, int.MaxValue);
+                                    resolvedRtKeyedMutexDev2?.Acquire(1, int.MaxValue);
                                     saQuad.ShaderResource = resolvedSrv;
                                     saQuad.RenderTargetView = resizedRtv;
                                     saQuad.RenderTarget = resizedRt;
                                     saQuad.Render();
-                                    if (resolvedRtKeyedMutexDev2 != null)
-                                        resolvedRtKeyedMutexDev2.Release(0);
+                                    resolvedRtKeyedMutexDev2?.Release(0);
                                 }
 
                                 // set sourceTexture to the resized RT
@@ -440,13 +441,13 @@ namespace Capture.Hook
                         var acquireLock = sourceTexture == resolvedRtShared;
 
 
-                        ThreadPool.QueueUserWorkItem(o =>
+                        ThreadPool.QueueUserWorkItem(_ =>
                         {
                             // Acquire lock on second device
                             if (acquireLock && resolvedRtKeyedMutexDev2 != null)
                                 resolvedRtKeyedMutexDev2.Acquire(1, int.MaxValue);
 
-                            lock (@lock)
+                            lock (mutex)
                             {
                                 // Copy the subresource region, we are dealing with a flat 2D texture with no MipMapping, so 0 is the subresource index
                                 sourceTexture.Device.ImmediateContext.CopySubresourceRegion(sourceTexture, 0, new ResourceRegion
@@ -483,25 +484,28 @@ namespace Capture.Hook
 
                                     try
                                     {
-                                        using (var ms = new MemoryStream())
+                                        using var ms = new MemoryStream();
+                                        switch (requestCopy.Format)
                                         {
-                                            switch (requestCopy.Format)
-                                            {
-                                                case ImageFormat.Bitmap:
-                                                case ImageFormat.Jpeg:
-                                                case ImageFormat.Png:
-                                                    ToStream(finalRt.Device.ImmediateContext, finalRt, requestCopy.Format, ms);
-                                                    break;
-                                                case ImageFormat.PixelData:
-                                                    if (db.DataPointer != IntPtr.Zero)
-                                                    {
-                                                        ProcessCapture(finalRt.Description.Width, finalRt.Description.Height, db.RowPitch, PixelFormat.Format32bppArgb, db.DataPointer, requestCopy);
-                                                    }
-                                                    return;
-                                            }
-                                            ms.Position = 0;
-                                            ProcessCapture(ms, requestCopy);
+                                            case ImageFormat.Bitmap:
+                                            case ImageFormat.Jpeg:
+                                            case ImageFormat.Png:
+                                                ToStream(finalRt.Device.ImmediateContext, finalRt, requestCopy.Format, ms);
+                                                break;
+                                            
+                                            case ImageFormat.PixelData:
+                                                if (db.DataPointer != IntPtr.Zero)
+                                                {
+                                                    ProcessCapture(finalRt.Description.Width, finalRt.Description.Height, db.RowPitch, PixelFormat.Format32bppArgb, db.DataPointer, 
+                                                        requestCopy);
+                                                }
+                                                return;
+                                            
+                                            default:
+                                                throw new ArgumentOutOfRangeException();
                                         }
+                                        ms.Position = 0;
+                                        ProcessCapture(ms, requestCopy);
                                     }
                                     finally
                                     {
@@ -509,7 +513,7 @@ namespace Capture.Hook
                                         
                                         if (finalRtMapped)
                                         {
-                                            lock (@lock)
+                                            lock (mutex)
                                             {
                                                 finalRt.Device.ImmediateContext.UnmapSubresource(finalRt, 0);
                                                 finalRtMapped = false;
@@ -540,8 +544,7 @@ namespace Capture.Hook
                     if (swapChainPointer != swapChainIn.NativePointer || overlayEngine == null
                         || IsOverlayUpdatePending)
                     {
-                        if (overlayEngine != null)
-                            overlayEngine.Dispose();
+                        overlayEngine?.Dispose();
 
                         overlayEngine = new DXOverlayEngine();
                         overlayEngine.Overlays.AddRange(displayOverlays);
@@ -588,8 +591,7 @@ namespace Capture.Hook
         /// <param name="stream"></param>
         private void ToStream(DeviceContext context, Texture2D texture, ImageFormat outputFormat, Stream stream)
         {
-            if (wicFactory == null)
-                wicFactory = ToDispose(new ImagingFactory2());
+            wicFactory ??= ToDispose(new ImagingFactory2());
 
             var dataBox = context.MapSubresource(
                 texture,
@@ -611,76 +613,73 @@ namespace Capture.Hook
                 if (format == Guid.Empty)
                     return;
 
-                using (var bitmap = new Bitmap(
+                using var bitmap = new Bitmap(
                     wicFactory,
                     texture.Description.Width,
                     texture.Description.Height,
                     format,
-                    dataRectangle))
+                    dataRectangle);
+                
+                stream.Position = 0;
+
+                BitmapEncoder bitmapEncoder = null;
+                switch (outputFormat)
                 {
-                    stream.Position = 0;
+                    case ImageFormat.Bitmap:
+                        bitmapEncoder = new BmpBitmapEncoder(wicFactory, stream);
+                        break;
+                        
+                    case ImageFormat.Jpeg:
+                        bitmapEncoder = new JpegBitmapEncoder(wicFactory, stream);
+                        break;
+                        
+                    case ImageFormat.Png:
+                        bitmapEncoder = new PngBitmapEncoder(wicFactory, stream);
+                        break;
+                        
+                    case ImageFormat.PixelData:
+                        break;
+                        
+                    default:
+                        return;
+                }
 
-                    BitmapEncoder bitmapEncoder = null;
-                    switch (outputFormat)
-                    {
-                        case ImageFormat.Bitmap:
-                            bitmapEncoder = new BmpBitmapEncoder(wicFactory, stream);
-                            break;
-                        
-                        case ImageFormat.Jpeg:
-                            bitmapEncoder = new JpegBitmapEncoder(wicFactory, stream);
-                            break;
-                        
-                        case ImageFormat.Png:
-                            bitmapEncoder = new PngBitmapEncoder(wicFactory, stream);
-                            break;
-                        
-                        case ImageFormat.PixelData:
-                            break;
-                        
-                        default:
-                            return;
-                    }
+                try
+                {
+                    using var bitmapFrameEncode = new BitmapFrameEncode(bitmapEncoder);
+                    
+                    bitmapFrameEncode.Initialize();
+                    bitmapFrameEncode.SetSize(bitmap.Size.Width, bitmap.Size.Height);
+                    var pixelFormat = format;
+                    bitmapFrameEncode.SetPixelFormat(ref pixelFormat);
 
-                    try
+                    if (pixelFormat != format)
                     {
-                        using (var bitmapFrameEncode = new BitmapFrameEncode(bitmapEncoder))
+                        // IWICFormatConverter
+                        using var converter = new FormatConverter(wicFactory);
+                            
+                        if (converter.CanConvert(format, pixelFormat))
                         {
-                            bitmapFrameEncode.Initialize();
-                            bitmapFrameEncode.SetSize(bitmap.Size.Width, bitmap.Size.Height);
-                            var pixelFormat = format;
+                            converter.Initialize(bitmap, SharpDX.WIC.PixelFormat.Format24bppBGR, BitmapDitherType.None, null, 0, BitmapPaletteType.MedianCut);
                             bitmapFrameEncode.SetPixelFormat(ref pixelFormat);
-
-                            if (pixelFormat != format)
-                            {
-                                // IWICFormatConverter
-                                using (var converter = new FormatConverter(wicFactory))
-                                {
-                                    if (converter.CanConvert(format, pixelFormat))
-                                    {
-                                        converter.Initialize(bitmap, SharpDX.WIC.PixelFormat.Format24bppBGR, BitmapDitherType.None, null, 0, BitmapPaletteType.MedianCut);
-                                        bitmapFrameEncode.SetPixelFormat(ref pixelFormat);
-                                        bitmapFrameEncode.WriteSource(converter);
-                                    }
-                                    else
-                                    {
-                                        DebugMessage($"Unable to convert Direct3D texture format {texture.Description.Format.ToString()} to a suitable WIC format");
-                                        return;
-                                    }
-                                }
-                            }
-                            else
-                            {
-                                bitmapFrameEncode.WriteSource(bitmap);
-                            }
-                            bitmapFrameEncode.Commit();
-                            bitmapEncoder?.Commit();
+                            bitmapFrameEncode.WriteSource(converter);
+                        }
+                        else
+                        {
+                            DebugMessage($"Unable to convert Direct3D texture format {texture.Description.Format.ToString()} to a suitable WIC format");
+                            return;
                         }
                     }
-                    finally
+                    else
                     {
-                        bitmapEncoder?.Dispose();
+                        bitmapFrameEncode.WriteSource(bitmap);
                     }
+                    bitmapFrameEncode.Commit();
+                    bitmapEncoder?.Commit();
+                }
+                finally
+                {
+                    bitmapEncoder?.Dispose();
                 }
             }
             finally

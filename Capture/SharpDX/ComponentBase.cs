@@ -1,6 +1,7 @@
 ﻿using System;
 using System.ComponentModel;
 
+// ReSharper disable once CheckNamespace
 namespace SharpDX
 {
     // From SharpDX.Toolkit
@@ -37,11 +38,10 @@ namespace SharpDX
         /// <param name="name">The name.</param>
         protected ComponentBase(string name)
         {
-            if (name != null)
-            {
-                this.name = name;
-                isNameImmutable = true;
-            }
+            if (name == null) return;
+            
+            this.name = name;
+            isNameImmutable = true;
         }
 
         /// <summary>

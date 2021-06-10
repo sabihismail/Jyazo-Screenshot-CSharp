@@ -21,7 +21,7 @@ namespace Capture.Hook
         private Hook<Direct3D9DeviceResetDelegate> direct3DDeviceResetHook;
         private Hook<Direct3D9DevicePresentDelegate> direct3DDevicePresentHook;
         private Hook<Direct3D9DeviceExPresentExDelegate> direct3DDeviceExPresentExHook;
-        private readonly object lockRenderTarget = new object();
+        private readonly object lockRenderTarget = new();
 
         private bool resourcesInitialised;
         private Query query;
@@ -34,7 +34,7 @@ namespace Capture.Hook
 
         protected override string HookName => "DXHookD3D9";
 
-        private List<IntPtr> id3dDeviceFunctionAddresses = new List<IntPtr>();
+        private List<IntPtr> id3dDeviceFunctionAddresses = new();
         //List<IntPtr> id3dDeviceExFunctionAddresses = new List<IntPtr>();
         private const int D_3D9_DEVICE_METHOD_COUNT = 119;
         private const int D_3D9_EX_DEVICE_METHOD_COUNT = 15;
@@ -61,19 +61,23 @@ namespace Capture.Hook
 
             try
             {
-                using (var d3dEx = new Direct3DEx())
-                {
-                    DebugMessage("Hook: Direct3DEx...");
-                    using (var renderForm = new Form())
+                using var d3dEx = new Direct3DEx();
+                
+                DebugMessage("Hook: Direct3DEx...");
+                using var renderForm = new Form();
+                using var deviceEx = new DeviceEx(d3dEx, 0, DeviceType.NullReference, IntPtr.Zero, CreateFlags.HardwareVertexProcessing, 
+                    new PresentParameters
                     {
-                        using (var deviceEx = new DeviceEx(d3dEx, 0, DeviceType.NullReference, IntPtr.Zero, CreateFlags.HardwareVertexProcessing, new PresentParameters { BackBufferWidth = 1, BackBufferHeight = 1, DeviceWindowHandle = renderForm.Handle }, new DisplayModeEx { Width = 800, Height = 600 }))
-                        {
-                            DebugMessage("Hook: DeviceEx created - PresentEx supported");
-                            id3dDeviceFunctionAddresses.AddRange(GetVTblAddresses(deviceEx.NativePointer, D_3D9_DEVICE_METHOD_COUNT, D_3D9_EX_DEVICE_METHOD_COUNT));
-                            supportsDirect3D9Ex = true;
-                        }
-                    }
-                }
+                        BackBufferWidth = 1, BackBufferHeight = 1, DeviceWindowHandle = renderForm.Handle
+                    }, 
+                    new DisplayModeEx
+                    {
+                        Width = 800, Height = 600
+                    });
+                
+                DebugMessage("Hook: DeviceEx created - PresentEx supported");
+                id3dDeviceFunctionAddresses.AddRange(GetVTblAddresses(deviceEx.NativePointer, D_3D9_DEVICE_METHOD_COUNT, D_3D9_EX_DEVICE_METHOD_COUNT));
+                supportsDirect3D9Ex = true;
             }
             catch (Exception)
             {
@@ -199,8 +203,7 @@ namespace Capture.Hook
         private int ResetHook(IntPtr devicePtr, ref PresentParameters presentParameters)
         {
             // Ensure certain overlay resources have performed necessary pre-reset tasks
-            if (overlayEngine != null)
-                overlayEngine.BeforeDeviceReset();
+            overlayEngine?.BeforeDeviceReset();
 
             Cleanup();
 
@@ -300,12 +303,12 @@ namespace Capture.Hook
                                 if (renderTarget.Description.Width > Request.Resize.Value.Width)
                                 {
                                     width = Request.Resize.Value.Width;
-                                    height = (int)Math.Round((renderTarget.Description.Height * (Request.Resize.Value.Width / (double)renderTarget.Description.Width)));
+                                    height = (int)Math.Round(renderTarget.Description.Height * (Request.Resize.Value.Width / (double)renderTarget.Description.Width));
                                 }
                                 else
                                 {
                                     height = Request.Resize.Value.Height;
-                                    width = (int)Math.Round((renderTarget.Description.Width * (Request.Resize.Value.Height / (double)renderTarget.Description.Height)));
+                                    width = (int)Math.Round(renderTarget.Description.Width * (Request.Resize.Value.Height / (double)renderTarget.Description.Height));
                                 }
                             }
                             else
@@ -368,33 +371,31 @@ namespace Capture.Hook
                 #endregion
 
                 var displayOverlays = Overlays;
-                if (Config.ShowOverlay && displayOverlays != null)
+                if (!Config.ShowOverlay || displayOverlays == null) return;
+                
+                #region Draw Overlay
+
+                // Check if overlay needs to be initialised
+                if (overlayEngine == null || overlayEngine.Device.NativePointer != device.NativePointer
+                                          || IsOverlayUpdatePending)
                 {
-                    #region Draw Overlay
-
-                    // Check if overlay needs to be initialised
-                    if (overlayEngine == null || overlayEngine.Device.NativePointer != device.NativePointer
-                        || IsOverlayUpdatePending)
-                    {
-                        // Cleanup if necessary
-                        if (overlayEngine != null)
-                            RemoveAndDispose(ref overlayEngine);
-
-                        overlayEngine = ToDispose(new DXOverlayEngine());
-                        overlayEngine.Overlays.AddRange(displayOverlays);
-                        overlayEngine.Initialise(device);
-                        IsOverlayUpdatePending = false;
-                    }
-                    // Draw Overlay(s)
+                    // Cleanup if necessary
                     if (overlayEngine != null)
-                    {
-                        foreach (var overlay in overlayEngine.Overlays)
-                            overlay.Frame();
-                        overlayEngine.Draw();
-                    }
+                        RemoveAndDispose(ref overlayEngine);
 
-                    #endregion
+                    overlayEngine = ToDispose(new DXOverlayEngine());
+                    overlayEngine.Overlays.AddRange(displayOverlays);
+                    overlayEngine.Initialise(device);
+                    IsOverlayUpdatePending = false;
                 }
+                // Draw Overlay(s)
+                if (overlayEngine == null) return;
+                    
+                foreach (var overlay in overlayEngine.Overlays)
+                    overlay.Frame();
+                overlayEngine.Draw();
+
+                #endregion
             }
             catch (Exception e)
             {

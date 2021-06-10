@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 
 namespace Capture
 {
-    [System.Security.SuppressUnmanagedCodeSecurity()]
+    [System.Security.SuppressUnmanagedCodeSecurity]
     internal static class NativeMethods
     {
         internal static bool IsWindowInForeground(IntPtr hWnd)
@@ -136,18 +136,6 @@ namespace Capture
         [DllImport("user32.dll")]
         [return: MarshalAs(UnmanagedType.Bool)]
         internal static extern bool IsIconic(IntPtr hWnd);
-
-        //Get window position
-        [DllImport("user32.dll")]
-        public static extern bool GetWindowRect(IntPtr hwnd, ref Rect rectangle);
-
-        public struct Rect
-        {
-            public int Left { get; set; }
-            public int Top { get; set; }
-            public int Right { get; set; }
-            public int Bottom { get; set; }
-        }
 
         #endregion
     }

@@ -1,5 +1,6 @@
 ﻿using System;
 using Capture.Interface;
+// ReSharper disable UnusedMemberInSuper.Global
 
 namespace Capture.Hook
 {

@@ -28,12 +28,11 @@ namespace Capture.Hook.Common
         public override void Frame()
         {
             frames++;
-            if (Math.Abs(Environment.TickCount - lastTickCount) > 1000)
-            {
-                lastFrameRate = (float)frames * 1000 / Math.Abs(Environment.TickCount - lastTickCount);
-                lastTickCount = Environment.TickCount;
-                frames = 0;
-            }
+            if (Math.Abs(Environment.TickCount - lastTickCount) <= 1000) return;
+            
+            lastFrameRate = (float)frames * 1000 / Math.Abs(Environment.TickCount - lastTickCount);
+            lastTickCount = Environment.TickCount;
+            frames = 0;
         }
 
         /// <summary>

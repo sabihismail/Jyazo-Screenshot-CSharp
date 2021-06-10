@@ -6,7 +6,7 @@ namespace Capture.Hook.Common
     [Serializable]
     public class Overlay: IOverlay
     {
-        private List<IOverlayElement> elements = new List<IOverlayElement>();
+        private List<IOverlayElement> elements = new();
         public virtual List<IOverlayElement> Elements
         {
             get => elements;

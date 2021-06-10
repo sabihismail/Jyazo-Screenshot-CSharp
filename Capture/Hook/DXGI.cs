@@ -1,5 +1,6 @@
 ﻿using System;
 using SharpDX.DXGI;
+// ReSharper disable UnusedMember.Global
 
 namespace Capture.Hook
 {
@@ -31,14 +32,14 @@ namespace Capture.Hook
             ResizeTarget = 14,
             GetContainingOutput = 15,
             GetFrameStatistics = 16,
-            GetLastPresentCount = 17,
+            GetLastPresentCount = 17
         }
 
         public const int DXGI_SWAPCHAIN_METHOD_COUNT = 18;
 
         public static SwapChainDescription CreateSwapChainDescription(IntPtr windowHandle)
         {
-            return new SwapChainDescription
+            return new()
             {
                 BufferCount = 1,
                 Flags = SwapChainFlags.None,

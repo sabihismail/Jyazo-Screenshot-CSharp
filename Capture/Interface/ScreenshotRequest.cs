@@ -13,13 +13,11 @@ namespace Capture.Interface
         public Size? Resize { get; set; }
         public ImageFormat Format { get; set; }
 
-        public ScreenshotRequest(Rectangle region, Size resize)
-            : this(Guid.NewGuid(), region, resize)
+        public ScreenshotRequest(Rectangle region, Size resize) : this(Guid.NewGuid(), region, resize)
         {
         }
 
-        public ScreenshotRequest(Rectangle region)
-            : this(Guid.NewGuid(), region, null)
+        public ScreenshotRequest(Rectangle region) : this(Guid.NewGuid(), region)
         {
         }
 
@@ -32,7 +30,7 @@ namespace Capture.Interface
 
         public ScreenshotRequest Clone()
         {
-            return new ScreenshotRequest(RequestId, RegionToCapture, Resize)
+            return new(RequestId, RegionToCapture, Resize)
             {
                 Format = Format
             };
@@ -52,14 +50,14 @@ namespace Capture.Interface
 
         protected virtual void Dispose(bool disposing)
         {
-            if (!disposed)
+            if (disposed) return;
+            
+            if (disposing)
             {
-                if (disposing)
-                {
-                    Disconnect();
-                }
-                disposed = true;
+                Disconnect();
             }
+            
+            disposed = true;
         }
 
         /// <summary>

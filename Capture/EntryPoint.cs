@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Runtime.Remoting;
 using Capture.Hook;
 using Capture.Interface;
 using System.Threading.Tasks;
@@ -10,9 +11,9 @@ namespace Capture
 {
     public class EntryPoint : EasyHook.IEntryPoint
     {
-        private readonly List<IDXHook> directXHooks = new List<IDXHook>();
+        private readonly List<IDXHook> directXHooks = new();
         private readonly CaptureInterface captureInterface;
-        private readonly ClientCaptureInterfaceEventProxy clientEventProxy = new ClientCaptureInterfaceEventProxy();
+        private readonly ClientCaptureInterfaceEventProxy clientEventProxy = new();
         private readonly IpcServerChannel clientServerChannel = null;
         
         private IDXHook directXHook;
@@ -51,7 +52,7 @@ namespace Capture
             // When not using GAC there can be issues with remoting assemblies resolving correctly
             // this is a workaround that ensures that the current assembly is correctly associated
             var currentDomain = AppDomain.CurrentDomain;
-            currentDomain.AssemblyResolve += (sender, args) => GetType().Assembly.FullName == args.Name ? GetType().Assembly : null;
+            currentDomain.AssemblyResolve += (_, args) => GetType().Assembly.FullName == args.Name ? GetType().Assembly : null;
 
             // NOTE: This is running in the target process
             captureInterface.Message(MessageType.Information, "Injected into process Id:{0}.", EasyHook.RemoteHooking.GetCurrentProcessId());
@@ -116,20 +117,22 @@ namespace Capture
 
         private void DisposeDirectXHook()
         {
-            if (directXHooks != null)
+            if (directXHooks == null) return;
+
+            try
             {
-                try
-                {
-                    captureInterface.Message(MessageType.Debug, "Disposing of hooks...");
-                }
-                catch (System.Runtime.Remoting.RemotingException) { } // Ignore channel remoting errors
-
-                // Dispose of the hooks so they are removed
-                foreach (var dxHook in directXHooks)
-                    dxHook.Dispose();
-
-                directXHooks.Clear();
+                captureInterface.Message(MessageType.Debug, "Disposing of hooks...");
             }
+            catch (RemotingException)
+            {
+                
+            }
+
+            // Dispose of the hooks so they are removed
+            foreach (var dxHook in directXHooks)
+                dxHook.Dispose();
+
+            directXHooks.Clear();
         }
 
         private bool InitialiseDirectXHook(CaptureConfig config)
@@ -143,7 +146,7 @@ namespace Capture
 
             try
             {
-                if (version == Direct3DVersion.AUTO_DETECT || version == Direct3DVersion.UNKNOWN)
+                if (version is Direct3DVersion.AUTO_DETECT or Direct3DVersion.UNKNOWN)
                 {
                     // Attempt to determine the correct version based on loaded module.
                     // In most cases this will work fine, however it is perfectly ok for an application to use a D3D10 device along with D3D11 devices
@@ -154,7 +157,7 @@ namespace Capture
                     var d3D11Loaded = IntPtr.Zero;
                     var d3D111Loaded = IntPtr.Zero;
 
-                    var delayTime = 100;
+                    const int delayTime = 100;
                     var retryCount = 0;
                     while (d3D9Loaded == IntPtr.Zero && d3D10Loaded == IntPtr.Zero && d3D101Loaded == IntPtr.Zero && d3D11Loaded == IntPtr.Zero && d3D111Loaded == IntPtr.Zero)
                     {
@@ -217,18 +220,31 @@ namespace Capture
                         case Direct3DVersion.DIRECT_3D_9:
                             directXHook = new DXHookD3D9(captureInterface);
                             break;
+                        
                         case Direct3DVersion.DIRECT_3D_10:
                             directXHook = new DXHookD3D10(captureInterface);
                             break;
+                        
                         case Direct3DVersion.DIRECT_3D_10_1:
                             directXHook = new DXHookD3D101(captureInterface);
                             break;
+                        
                         case Direct3DVersion.DIRECT_3D_11:
                             directXHook = new DXHookD3D11(captureInterface);
                             break;
-                        //case Direct3DVersion.Direct3D11_1:
-                        //    _directXHook = new DXHookD3D11_1(_interface);
-                        //    return;
+                        
+                        case Direct3DVersion.UNKNOWN:
+                            captureInterface.Message(MessageType.Error, "Unsupported Direct3D version: {0}", version);
+                            break;
+                        
+                        case Direct3DVersion.AUTO_DETECT:
+                            captureInterface.Message(MessageType.Error, "Unsupported Direct3D version: {0}", version);
+                            break;
+                        
+                        case Direct3DVersion.DIRECT_3D_11_1:
+                            captureInterface.Message(MessageType.Error, "Unsupported Direct3D version: {0}", version);
+                            break;
+                        
                         default:
                             captureInterface.Message(MessageType.Error, "Unsupported Direct3D version: {0}", version);
                             return false;

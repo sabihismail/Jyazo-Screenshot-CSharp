@@ -170,7 +170,7 @@ namespace Capture.Hook.DX11
             charHeight = (int)(size.Height + 0.5f);
 
             var numRows = (int)(size.Width / texWidth) + 1;
-            texHeight = (numRows * charHeight) + 1;
+            texHeight = numRows * charHeight + 1;
 
             var sf = StringFormat.GenericDefault;
             sf.FormatFlags |= StringFormatFlags.MeasureTrailingSpaces;

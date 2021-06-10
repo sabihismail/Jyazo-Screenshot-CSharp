@@ -2,6 +2,7 @@
 using System.Drawing;
 using System.Threading;
 using Capture.Hook.Common;
+// ReSharper disable EventNeverSubscribedTo.Global
 
 namespace Capture.Interface
 {
@@ -124,10 +125,10 @@ namespace Capture.Interface
 
         #region Still image Capture
 
-        private object @lock = new object();
+        private object @lock = new();
         private Guid? requestId;
         private Action<Screenshot> completeScreenshot;
-        private ManualResetEvent wait = new ManualResetEvent(false);
+        private ManualResetEvent wait = new(false);
 
         /// <summary>
         /// Get a fullscreen screenshot with the default timeout of 2 seconds
@@ -155,10 +156,10 @@ namespace Capture.Interface
                 SafeInvokeScreenshotRequested(new ScreenshotRequest(requestId.Value, region)
                 {
                     Format = format,
-                    Resize = resize,
+                    Resize = resize
                 });
 
-                completeScreenshot = (sc) =>
+                completeScreenshot = sc =>
                 {
                     try
                     {

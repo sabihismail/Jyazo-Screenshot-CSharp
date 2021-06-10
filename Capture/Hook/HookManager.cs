@@ -2,12 +2,13 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using EasyHook;
+// ReSharper disable UnusedMember.Global
 
 namespace Capture.Hook
 {
     public static class HookManager
     {
-        private static readonly List<int> HookedProcesses = new List<int>();
+        private static readonly List<int> HookedProcesses = new();
 
         /*
          * Please note that we have obtained this information with system privileges.
@@ -19,9 +20,9 @@ namespace Capture.Hook
          * it contains but you should keep the code semantic.
          */
         // ReSharper disable once UnusedMember.Global
-        internal static List<ProcessInfo> ProcessList = new List<ProcessInfo>();
+        internal static List<ProcessInfo> ProcessList = new();
         // ReSharper disable once UnusedMember.Local
-        private static List<int> activePidList = new List<int>();
+        private static List<int> activePidList = new();
 
         public static void AddHookedProcess(int processId)
         {

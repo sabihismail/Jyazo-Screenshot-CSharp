@@ -1,4 +1,5 @@
-﻿namespace Capture.Interface
+﻿// ReSharper disable UnusedMember.Global
+namespace Capture.Interface
 {
     public enum MessageType
     {

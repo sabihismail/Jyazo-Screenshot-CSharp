@@ -15,7 +15,7 @@ namespace Capture
         /// </summary>
         private readonly string channelName;
 
-        private Process Process { get; set; }
+        private Process Process { get; }
 
         /// <summary>
         /// Prepares capturing in the target process. Note that the process must not already be hooked, and must have a MainWindowHandle/>.

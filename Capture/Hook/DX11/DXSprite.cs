@@ -57,7 +57,7 @@ namespace Capture.Hook.DX11
             }
         }
 
-        private readonly List<Sprite> spriteList = new List<Sprite>(128);
+        private readonly List<Sprite> spriteList = new(128);
         
         private bool initialized;
         private BlendState transparentBs;
@@ -131,9 +131,9 @@ technique11 SpriteTech {
                     {
                         InputElement[] layoutDesc = 
                         {
-                            new InputElement("POSITION", 0, Format.R32G32B32_Float, 0, 0, InputClassification.PerVertexData, 0),
-                            new InputElement("TEXCOORD", 0, Format.R32G32_Float, 12, 0, InputClassification.PerVertexData, 0),
-                            new InputElement("COLOR", 0, Format.R32G32B32A32_Float, 20, 0, InputClassification.PerVertexData, 0)
+                            new("POSITION", 0, Format.R32G32B32_Float, 0, 0, InputClassification.PerVertexData, 0),
+                            new("TEXCOORD", 0, Format.R32G32_Float, 12, 0, InputClassification.PerVertexData, 0),
+                            new("COLOR", 0, Format.R32G32B32A32_Float, 20, 0, InputClassification.PerVertexData, 0)
                         };
 
                         inputLayout = ToDispose(new InputLayout(device, pass.Description.Signature, layoutDesc));
@@ -183,7 +183,7 @@ technique11 SpriteTech {
                     var transparentDesc = new BlendStateDescription
                     {
                         AlphaToCoverageEnable = false,
-                        IndependentBlendEnable = false,
+                        IndependentBlendEnable = false
                     };
                     transparentDesc.RenderTarget[0].IsBlendEnabled = true;
                     transparentDesc.RenderTarget[0].SourceBlend = BlendOption.SourceAlpha;
@@ -218,68 +218,66 @@ technique11 SpriteTech {
             Debug.Assert(initialized);
 
             var blendFactor = new Color4(1.0f);
-            using (var backupBlendState = deviceContext.OutputMerger.GetBlendState(out var backupBlendFactor, out var backupMask))
-            {
-                deviceContext.OutputMerger.SetBlendState(transparentBs, blendFactor);
+            using var backupBlendState = deviceContext.OutputMerger.GetBlendState(out var backupBlendFactor, out var backupMask);
+            
+            deviceContext.OutputMerger.SetBlendState(transparentBs, blendFactor);
 
-                BeginBatch(image.GetSrv());
+            BeginBatch(image.GetSrv());
 
-                Draw(new Rectangle(x, y, (int)(scale * image.Width), (int)(scale * image.Height)), new Rectangle(0, 0, image.Width, image.Height), color.HasValue ? ToColor4(color.Value) : Color4.White, 1.0f, angle);
+            Draw(new Rectangle(x, y, (int)(scale * image.Width), (int)(scale * image.Height)), new Rectangle(0, 0, image.Width, image.Height), color.HasValue ? ToColor4(color.Value) : Color4.White, 1.0f, angle);
 
-                EndBatch();
-                deviceContext.OutputMerger.SetBlendState(backupBlendState, backupBlendFactor, backupMask);
-            }
+            EndBatch();
+            deviceContext.OutputMerger.SetBlendState(backupBlendState, backupBlendFactor, backupMask);
         }
 
         public void DrawString(int x, int y, string text, Color color, DXFont f)
         {
             var blendFactor = new Color4(1.0f);
-            using (var backupBlendState = deviceContext.OutputMerger.GetBlendState(out var backupBlendFactor, out var backupMask))
+            using var backupBlendState = deviceContext.OutputMerger.GetBlendState(out var backupBlendFactor, out var backupMask);
+            
+            deviceContext.OutputMerger.SetBlendState(transparentBs, blendFactor);
+
+            BeginBatch(f.GetFontSheetSrv());
+
+            var length = text.Length;
+
+            var posX = x;
+            var posY = y;
+
+            var color4 = ToColor4(color);
+
+            for (var i = 0; i < length; ++i)
             {
-                deviceContext.OutputMerger.SetBlendState(transparentBs, blendFactor);
+                var character = text[i];
 
-                BeginBatch(f.GetFontSheetSrv());
-
-                var length = text.Length;
-
-                var posX = x;
-                var posY = y;
-
-                var color4 = ToColor4(color);
-
-                for (var i = 0; i < length; ++i)
+                switch (character)
                 {
-                    var character = text[i];
-
-                    switch (character)
+                    case ' ':
+                        posX += f.GetSpaceWidth();
+                        break;
+                        
+                    case '\n':
+                        posX = x;
+                        posY += f.GetCharHeight();
+                        break;
+                        
+                    default:
                     {
-                        case ' ':
-                            posX += f.GetSpaceWidth();
-                            break;
-                        
-                        case '\n':
-                            posX = x;
-                            posY += f.GetCharHeight();
-                            break;
-                        
-                        default:
-                        {
-                            var charRect = f.GetCharRect(character);
+                        var charRect = f.GetCharRect(character);
 
-                            var width = charRect.Right - charRect.Left;
-                            var height = charRect.Bottom - charRect.Top;
+                        var width = charRect.Right - charRect.Left;
+                        var height = charRect.Bottom - charRect.Top;
 
-                            Draw(new Rectangle(posX, posY, width, height), charRect, color4);
+                        Draw(new Rectangle(posX, posY, width, height), charRect, color4);
 
-                            posX += width + 1;
-                            break;
-                        }
+                        posX += width + 1;
+                        break;
                     }
                 }
-
-                EndBatch();
-                deviceContext.OutputMerger.SetBlendState(backupBlendState, backupBlendFactor, backupMask);
             }
+
+            EndBatch();
+            deviceContext.OutputMerger.SetBlendState(backupBlendState, backupBlendFactor, backupMask);
         }
 
         private void BeginBatch(ShaderResourceView texSrv)

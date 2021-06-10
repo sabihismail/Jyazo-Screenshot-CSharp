@@ -17,7 +17,7 @@ namespace ScreenShot.src.tools.gpu
             { "d3d11_1.dll", GraphicsPipeline.DIRECT_X_11_1 },
             { "d3d11_2.dll", GraphicsPipeline.DIRECT_X_11_2 },
             { "d3d11_3.dll", GraphicsPipeline.DIRECT_X_11_3 },
-            { "d3d11_4.dll", GraphicsPipeline.DIRECT_X_11_4 },
+            { "d3d11_4.dll", GraphicsPipeline.DIRECT_X_11_4 }
             // { "d3d12.dll", GraphicsPipeline.DIRECT_X_12 },
         };
 
@@ -54,8 +54,7 @@ namespace ScreenShot.src.tools.gpu
             DIRECT_X_11_1,
             DIRECT_X_11_2,
             DIRECT_X_11_3,
-            DIRECT_X_11_4,
-            DIRECT_X_12,
+            DIRECT_X_11_4
         }
     }
 }

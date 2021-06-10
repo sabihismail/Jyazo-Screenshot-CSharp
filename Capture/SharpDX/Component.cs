@@ -1,5 +1,7 @@
 ﻿using System;
+// ReSharper disable EventNeverSubscribedTo.Global
 
+// ReSharper disable once CheckNamespace
 namespace SharpDX
 {
     // From SharpDX.Toolkit
@@ -93,8 +95,7 @@ namespace SharpDX
         {
             if (ReferenceEquals(toDisposeArg, null)) return default;
             
-            if (DisposeCollector == null)
-                DisposeCollector = new DisposeCollector();
+            DisposeCollector ??= new DisposeCollector();
             
             return DisposeCollector.Collect(toDisposeArg);
         }

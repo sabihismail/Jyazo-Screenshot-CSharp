@@ -19,8 +19,8 @@ namespace Capture.Hook.DX9
         private bool initialising;
 
         private Sprite sprite;
-        private readonly Dictionary<string, Font> fontCache = new Dictionary<string, Font>();
-        private readonly Dictionary<Element, Texture> imageCache = new Dictionary<Element, Texture>();
+        private readonly Dictionary<string, Font> fontCache = new();
+        private readonly Dictionary<Element, Texture> imageCache = new();
 
         public Device Device { get; private set; }
 
@@ -160,8 +160,8 @@ namespace Capture.Hook.DX9
             result = ToDispose(new Font(Device, new FontDescription { 
                 FaceName = element.Font.Name,
                 Italic = (element.Font.Style & FontStyle.Italic) == FontStyle.Italic,
-                Quality = (element.AntiAliased ? FontQuality.Antialiased : FontQuality.Default),
-                Weight = ((element.Font.Style & FontStyle.Bold) == FontStyle.Bold) ? FontWeight.Bold : FontWeight.Normal,
+                Quality = element.AntiAliased ? FontQuality.Antialiased : FontQuality.Default,
+                Weight = (element.Font.Style & FontStyle.Bold) == FontStyle.Bold ? FontWeight.Bold : FontWeight.Normal,
                 Height = (int)element.Font.SizeInPoints
             }));
             

@@ -30,7 +30,7 @@ namespace ScreenShot.src.tools.display
                 var item = new WindowHistoryItem
                 {
                     HWND = handle,
-                    Name = title,
+                    Name = title
                 };
                 
                 APPLICATION_HISTORY.AddLast(item);

@@ -21,7 +21,6 @@ namespace Capture.Hook.Common
             return MemberwiseClone();
         }
 
-
         public void Dispose()
         {
             Dispose(true);
@@ -41,8 +40,7 @@ namespace Capture.Hook.Common
 
         protected void SafeDispose(IDisposable disposableObj)
         {
-            if (disposableObj != null)
-                disposableObj.Dispose();
+            disposableObj?.Dispose();
         }
     }
 }

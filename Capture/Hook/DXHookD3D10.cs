@@ -11,6 +11,7 @@ using SharpDX.DXGI;
 using Device = SharpDX.Direct3D10.Device; //using SlimDX.DXGI;
 using Rectangle = System.Drawing.Rectangle;
 using Resource = SharpDX.Direct3D10.Resource;
+// ReSharper disable UnusedMember.Global
 
 //using SlimDX.Direct3D10;
 //using SlimDX;
@@ -18,6 +19,7 @@ using Resource = SharpDX.Direct3D10.Resource;
 
 namespace Capture.Hook
 {
+    // ReSharper disable once UnusedType.Global
     internal enum D3D10DeviceVTbl : short
     {
         // IUnknown
@@ -120,7 +122,7 @@ namespace Capture.Hook
         GetCreationFlags = 94,
         OpenSharedResource = 95,
         SetTextFilterSize = 96,
-        GetTextFilterSize = 97,
+        GetTextFilterSize = 97
     }
 
     /// <summary>
@@ -154,22 +156,16 @@ namespace Capture.Hook
                 d3d10VTblAddresses = new List<IntPtr>();
                 dxgiSwapChainVTblAddresses = new List<IntPtr>();
                 DebugMessage("Hook: Before device creation");
-                using (var factory = new Factory1())
-                {
-                    using (var device = new Device(factory.GetAdapter(0), DeviceCreationFlags.None))
-                    {
-                        DebugMessage("Hook: Device created");
-                        d3d10VTblAddresses.AddRange(GetVTblAddresses(device.NativePointer, D_3D10_DEVICE_METHOD_COUNT));
+                using var factory = new Factory1();
+                using var device = new Device(factory.GetAdapter(0), DeviceCreationFlags.None);
+                
+                DebugMessage("Hook: Device created");
+                d3d10VTblAddresses.AddRange(GetVTblAddresses(device.NativePointer, D_3D10_DEVICE_METHOD_COUNT));
 
-                        using (var renderForm = new Form())
-                        {
-                            using (var sc = new SwapChain(factory, device, Dxgi.CreateSwapChainDescription(renderForm.Handle)))
-                            {
-                                dxgiSwapChainVTblAddresses.AddRange(GetVTblAddresses(sc.NativePointer, Dxgi.DXGI_SWAPCHAIN_METHOD_COUNT));
-                            }
-                        }
-                    }
-                }
+                using var renderForm = new Form();
+                using var sc = new SwapChain(factory, device, Dxgi.CreateSwapChainDescription(renderForm.Handle));
+                
+                dxgiSwapChainVTblAddresses.AddRange(GetVTblAddresses(sc.NativePointer, Dxgi.DXGI_SWAPCHAIN_METHOD_COUNT));
             }
 
             // We will capture the backbuffer here
@@ -222,7 +218,7 @@ namespace Capture.Hook
         /// <param name="swapChainPtr"></param>
         /// <param name="newTargetParameters"></param>
         /// <returns></returns>
-        private int ResizeTargetHook(IntPtr swapChainPtr, ref ModeDescription newTargetParameters)
+        private static int ResizeTargetHook(IntPtr swapChainPtr, ref ModeDescription newTargetParameters)
         {
             var swapChain = (SwapChain)swapChainPtr;
 
@@ -365,36 +361,33 @@ namespace Capture.Hook
                 #region Example: Draw overlay (after screenshot so we don't capture overlay as well)
                 if (Config.ShowOverlay)
                 {
-                    using (var texture = Resource.FromSwapChain<Texture2D>(swapChain, 0))
+                    using var texture = Resource.FromSwapChain<Texture2D>(swapChain, 0);
+                    
+                    if (Fps.GetFps() >= 1)
                     {
-                        if (Fps.GetFps() >= 1)
+                        var fd = new FontDescription
                         {
-                            var fd = new FontDescription
-                            {
-                                Height = 16,
-                                FaceName = "Arial",
-                                Italic = false,
-                                Width = 0,
-                                MipLevels = 1,
-                                CharacterSet = FontCharacterSet.Default,
-                                OutputPrecision = FontPrecision.Default,
-                                Quality = FontQuality.Antialiased,
-                                PitchAndFamily = FontPitchAndFamily.Default | FontPitchAndFamily.DontCare,
-                                Weight = FontWeight.Bold
-                            };
+                            Height = 16,
+                            FaceName = "Arial",
+                            Italic = false,
+                            Width = 0,
+                            MipLevels = 1,
+                            CharacterSet = FontCharacterSet.Default,
+                            OutputPrecision = FontPrecision.Default,
+                            Quality = FontQuality.Antialiased,
+                            PitchAndFamily = FontPitchAndFamily.Default | FontPitchAndFamily.DontCare,
+                            Weight = FontWeight.Bold
+                        };
 
-                            // TODO: Font should not be created every frame!
-                            using (var font = new Font(texture.Device, fd))
-                            {
-                                DrawText(font, new Vector2(5, 5), $"{Fps.GetFps():N0} fps", new Color4(Color.Red.ToColor3()));
+                        // TODO: Font should not be created every frame!
+                        using var font = new Font(texture.Device, fd);
+                        DrawText(font, new Vector2(5, 5), $"{Fps.GetFps():N0} fps", Color.Red);
 
-                                if (TextDisplay != null && TextDisplay.Display)
-                                {
-                                    DrawText(font, new Vector2(5, 25), TextDisplay.Text, new Color4(Color.Red.ToColor3(), (Math.Abs(1.0f - TextDisplay.Remaining))));
-                                }
-                            }
+                        if (TextDisplay is { Display: true })
+                        {
+                            DrawText(font, new Vector2(5, 25), TextDisplay.Text, new Color4(Color.Red.R, Color.Red.G, Color.Red.B, 
+                                Math.Abs(1.0f - TextDisplay.Remaining)));
                         }
-
                     }
                 }
                 #endregion
@@ -405,7 +398,7 @@ namespace Capture.Hook
                 DebugMessage("PresentHook: Exception: " + e.GetType().FullName + ": " + e.Message);
             }
 
-            // As always we need to call the original method, note that EasyHook has already repatched the original method
+            // As always we need to call the original method, note that EasyHook has already re-patched the original method
             // so calling it here will not cause an endless recursion to this function
             swapChain.Present(syncInterval, flags);
             return Result.Ok.Code;

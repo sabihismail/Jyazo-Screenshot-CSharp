@@ -5,6 +5,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 // ReSharper disable UnusedMember.Global
+// ReSharper disable UnusedMember.Local
 
 namespace ScreenShot.src.tools.util
 {
@@ -41,7 +42,7 @@ namespace ScreenShot.src.tools.util
             for (var index = 0; index < totalNumberOfModules; index++)
             {
                 var moduleFilePath = new StringBuilder(1024);
-                GetModuleFileNameEx(process.Handle, modulePointers[index], moduleFilePath, (uint)(moduleFilePath.Capacity));
+                GetModuleFileNameEx(process.Handle, modulePointers[index], moduleFilePath, (uint)moduleFilePath.Capacity);
 
                 var moduleName = Path.GetFileName(moduleFilePath.ToString());
                 collectedModules.Add(moduleName);
@@ -57,9 +58,6 @@ namespace ScreenShot.src.tools.util
         [DllImport("psapi.dll")]
         private static extern uint GetModuleFileNameEx(IntPtr hProcess, IntPtr hModule, [Out] StringBuilder lpBaseName, [In] [MarshalAs(UnmanagedType.U4)] uint nSize);
 
-        [DllImport("psapi.dll", SetLastError = true)]
-        private static extern bool GetModuleInformation(IntPtr hProcess, IntPtr hModule, out ModuleInformation ipModInfo, uint cb);
-        
         [DllImport("user32.dll")]
         public static extern IntPtr GetForegroundWindow();
         
@@ -108,7 +106,7 @@ namespace ScreenShot.src.tools.util
             LIST_MODULES_DEFAULT = 0x0,
             LIST_MODULES_32_BIT = 0x01,
             LIST_MODULES_64_BIT = 0x02,
-            LIST_MODULES_ALL = 0x03,
+            LIST_MODULES_ALL = 0x03
         }
     }
 }

@@ -202,7 +202,7 @@ float4 PSMain(PixelIn input) : SV_Target
             context.Rasterizer.State = ToDispose(new RasterizerState(device, new RasterizerStateDescription
             {
                 CullMode = CullMode.None,
-                FillMode = FillMode.Solid,                
+                FillMode = FillMode.Solid
             }));
 
             //// Configure the depth buffer to discard pixels that are
@@ -256,7 +256,7 @@ float4 PSMain(PixelIn input) : SV_Target
                 // Set sampler
                 RawViewportF[] viewportF = { new ViewportF(0, 0, RenderTarget.Description.Width, RenderTarget.Description.Height, 0, 1) };
                 context.Rasterizer.SetViewports(viewportF);
-                context.PixelShader.SetSampler(0, (UseLinearSampling ? linearSampleState : pointSamplerState));
+                context.PixelShader.SetSampler(0, UseLinearSampling ? linearSampleState : pointSamplerState);
 
                 // Set shader resource
                 //bool isMultisampledSRV = false;

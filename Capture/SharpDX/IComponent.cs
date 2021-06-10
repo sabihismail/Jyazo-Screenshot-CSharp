@@ -1,4 +1,6 @@
-﻿namespace SharpDX
+﻿// ReSharper disable once CheckNamespace
+// ReSharper disable UnusedMember.Global
+namespace SharpDX
 {
     // From SharpDX.Toolkit
 

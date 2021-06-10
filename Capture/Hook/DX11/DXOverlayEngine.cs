@@ -24,8 +24,8 @@ namespace Capture.Hook.DX11
         private Texture2D renderTarget;
         private RenderTargetView renderTargetView;
         private DXSprite spriteEngine;
-        private readonly Dictionary<string, DXFont> fontCache = new Dictionary<string, DXFont>();
-        private readonly Dictionary<Element, DXImage> imageCache = new Dictionary<Element, DXImage>();
+        private readonly Dictionary<string, DXFont> fontCache = new();
+        private readonly Dictionary<Element, DXImage> imageCache = new();
 
         public DXOverlayEngine()
         {
