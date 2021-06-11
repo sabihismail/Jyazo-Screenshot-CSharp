@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
 using Capture.Hook.DX11;
@@ -9,8 +10,11 @@ using SharpDX;
 using SharpDX.Direct3D;
 using SharpDX.Direct3D11;
 using SharpDX.DXGI;
+using SharpDX.Multimedia;
+using SharpDX.RawInput;
 using SharpDX.WIC;
 using SharpDX.Windows;
+using DeviceRawInput = SharpDX.RawInput.Device;
 using Device = SharpDX.Direct3D11.Device;
 using MapFlags = SharpDX.Direct3D11.MapFlags;
 using PixelFormat = System.Drawing.Imaging.PixelFormat;
@@ -77,8 +81,7 @@ namespace Capture.Hook
     {
         private const int D_3D11_DEVICE_METHOD_COUNT = 43;
 
-        public DXHookD3D11(CaptureInterface ssInterface)
-            : base(ssInterface)
+        public DXHookD3D11(CaptureInterface ssInterface) : base(ssInterface)
         {
         }
 
@@ -141,6 +144,36 @@ namespace Capture.Hook
                     out device,
                     out swapChain);
 
+                if (Config.CaptureMouseEvents)
+                {
+                    DebugMessage("Enabling Capture Mouse Events.");
+                    
+                    DeviceRawInput.RegisterDevice(UsagePage.Generic, UsageId.GenericMouse, DeviceFlags.None, device.NativePointer);
+                    DeviceRawInput.MouseInput += (_, args) =>
+                    {
+                        DebugMessage("Mouse Event.");
+                        
+                        Overlays.Where(x => x.HandlesMouseInput)
+                            .ToList()
+                            .ForEach(x => x.MouseInput(args, Interface));
+                    };
+                }
+
+                if (Config.CaptureKeyboardEvents)
+                {
+                    DebugMessage("Enabling Capture Keyboard Events.");
+                    
+                    DeviceRawInput.RegisterDevice(UsagePage.Generic, UsageId.GenericKeyboard, DeviceFlags.None, device.NativePointer);
+                    DeviceRawInput.KeyboardInput += (_, args) =>
+                    {
+                        DebugMessage("Keyboard Event.");
+                        
+                        Overlays.Where(x => x.HandlesKeyboardInput)
+                            .ToList()
+                            .ForEach(x => x.KeyboardInput(args, Interface));
+                    };
+                }
+                
                 ToDispose(device);
                 ToDispose(swapChain);
 
@@ -175,7 +208,6 @@ namespace Capture.Hook
              * Note: you must do this for each hook.
              */
             dxgiSwapChainPresentHook.Activate();
-            
             dxgiSwapChainResizeTargetHook.Activate();
 
             Hooks.Add(dxgiSwapChainPresentHook);
@@ -558,6 +590,7 @@ namespace Capture.Hook
                     {
                         foreach (var overlay in overlayEngine.Overlays)
                             overlay.Frame();
+                        
                         overlayEngine.Draw();
                     }
                 }
@@ -884,6 +917,4 @@ namespace Capture.Hook
             return Guid.Empty;
         }
     }
-
-
 }

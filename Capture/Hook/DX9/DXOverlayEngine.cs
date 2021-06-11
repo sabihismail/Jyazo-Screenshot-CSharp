@@ -44,7 +44,6 @@ namespace Capture.Hook.DX9
 
             try
             {
-
                 Device = device;
 
                 sprite = ToDispose(new Sprite(Device));

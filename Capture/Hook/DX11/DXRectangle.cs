@@ -37,6 +37,9 @@ namespace Capture.Hook.DX11
 
             Width = (int) width;
             Height = (int) height;
+
+            if (Width < 1) Width = 1;
+            if (Height < 1) Height = 1;
             
             var texDesc = new Texture2DDescription
             {

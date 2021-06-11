@@ -7,7 +7,6 @@ using Capture;
 using Capture.Hook.Common;
 using Capture.Interface;
 using ScreenShot.src.tools.util;
-using SharpDX.Direct2D1;
 
 namespace ScreenShot.src.tools.gpu
 {
@@ -21,7 +20,9 @@ namespace ScreenShot.src.tools.gpu
             var captureConfig = new CaptureConfig
             {
                 Direct3DVersion = direct3DVersion,
-                ShowOverlay = true
+                ShowOverlay = true,
+                CaptureMouseEvents = true,
+                CaptureKeyboardEvents = true
             };
             
             var captureInterface = new CaptureInterface();
@@ -38,9 +39,16 @@ namespace ScreenShot.src.tools.gpu
                     {
                         new RectangleElement
                         {
+                            Colour = Color.FromArgb(Color.Gray.ToArgb() ^ (0x33 << 24)),
                             Location = new Point(0, 0),
                             Width = -1,
                             Height = -1
+                        },
+                        new RectangleMouseHookElement
+                        {
+                            Colour = Color.FromArgb(Color.Green.ToArgb() ^ (0x33 << 24)),
+                            Width = 0,
+                            Height = 0
                         },
                         new FramesPerSecond(new Font("Arial", 16, FontStyle.Bold))
                         {

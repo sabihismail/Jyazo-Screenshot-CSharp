@@ -12,8 +12,7 @@ namespace Capture.Hook
     /// Extends <see cref="Hook"/> with support for accessing the Original method from within a hook delegate
     /// </summary>
     /// <typeparam name="T">A delegate type</typeparam>
-    public class Hook<T> : Hook
-        where T: class
+    public class Hook<T> : Hook where T: class
     {
         /// <summary>
         /// When called from within the <see cref="Hook.NewFunc"/> delegate this will call the original function at <see cref="Hook.FuncToHook"/>.

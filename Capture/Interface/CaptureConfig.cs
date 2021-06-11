@@ -9,6 +9,10 @@ namespace Capture.Interface
     {
         public Direct3DVersion Direct3DVersion { get; set; }
         public bool ShowOverlay { get; set; }
+        
+        public bool CaptureMouseEvents { get; set; }
+        
+        public bool CaptureKeyboardEvents { get; set; }
         public int TargetFramesPerSecond { get; set; }
         public string TargetFolder { get; set; }
 

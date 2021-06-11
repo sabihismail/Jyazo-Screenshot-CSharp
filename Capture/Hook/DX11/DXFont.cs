@@ -184,7 +184,6 @@ namespace Capture.Hook.DX11
             var fontSheetX = 0;
             var fontSheetY = 0;
 
-
             for (var i = 0; i < NUM_CHARS; ++i)
             {
                 charGraphics.Clear(Color.FromArgb(0, Color.Black));

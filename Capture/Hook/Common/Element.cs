@@ -1,4 +1,6 @@
 ﻿using System;
+using Capture.Interface;
+using SharpDX.RawInput;
 
 namespace Capture.Hook.Common
 {
@@ -6,6 +8,8 @@ namespace Capture.Hook.Common
     public abstract class Element: IOverlayElement, IDisposable
     {
         public virtual bool Hidden { get; set; }
+        public virtual bool HandlesMouseInput { get; set; } = false;
+        public virtual bool HandlesKeyboardInput { get; set; } = false;
 
         ~Element()
         {
@@ -13,6 +17,14 @@ namespace Capture.Hook.Common
         }
 
         public virtual void Frame()
+        {
+        }
+
+        public virtual void MouseInput(MouseInputEventArgs e, CaptureInterface captureInterface)
+        {
+        }
+
+        public virtual void KeyboardInput(KeyboardInputEventArgs e, CaptureInterface captureInterface)
         {
         }
 

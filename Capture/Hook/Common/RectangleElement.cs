@@ -6,7 +6,7 @@ namespace Capture.Hook.Common
     [Serializable]
     public class RectangleElement : Element
     {
-        public virtual Color Colour { get; set; } = Color.FromArgb(Color.Gray.ToArgb() ^ (0x33 << 24));
+        public virtual Color Colour { get; set; }
 
         public virtual Point Location { get; set; }
         
