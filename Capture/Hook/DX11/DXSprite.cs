@@ -74,7 +74,7 @@ namespace Capture.Hook.DX11
         private CompilationResult compiledFx;
         private Effect effect;
 
-        private SafeHGlobal indexBuffer;
+        private SafeHandleGlobal indexBuffer;
         public bool Initialize()
         {
             Debug.Assert(!initialized);
@@ -165,7 +165,7 @@ technique11 SpriteTech {
                         indices[i * 6 + 5] = (short)(i * 4 + 3);
                     }
 
-                    indexBuffer = ToDispose(new SafeHGlobal(indices.Length * Marshal.SizeOf(indices[0])));
+                    indexBuffer = ToDispose(new SafeHandleGlobal(indices.Length * Marshal.SizeOf(indices[0])));
                     Marshal.Copy(indices, 0, indexBuffer.DangerousGetHandle(), indices.Length);
 
                     var ibd = new BufferDescription

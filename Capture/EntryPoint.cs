@@ -1,25 +1,25 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Runtime.Remoting;
+using System.Diagnostics.CodeAnalysis;
 using Capture.Hook;
 using Capture.Interface;
 using System.Threading.Tasks;
 using System.Runtime.Remoting.Channels.Ipc;
-using System.Threading;
 
 namespace Capture
 {
+    // ReSharper disable once UnusedType.Global
     public class EntryPoint : EasyHook.IEntryPoint
     {
         private readonly List<IDXHook> directXHooks = new();
-        private readonly CaptureInterface captureInterface;
         private readonly ClientCaptureInterfaceEventProxy clientEventProxy = new();
         private readonly IpcServerChannel clientServerChannel = null;
-        
+        private readonly CaptureInterface captureInterface;
         private IDXHook directXHook;
-        private ManualResetEvent runWait;
+        private System.Threading.ManualResetEvent runWait;
 
-        public EntryPoint(string channelName)
+        [SuppressMessage("ReSharper", "UnusedParameter.Local")]
+        public EntryPoint(EasyHook.RemoteHooking.IContext context, string channelName, CaptureConfig config)
         {
             // Get reference to IPC to host application
             // Note: any methods called or events triggered against _interface will execute in the host process.
@@ -47,7 +47,7 @@ namespace Capture
         }
 
         // ReSharper disable once UnusedMember.Global
-        public void Run(CaptureConfig config)
+        public void Run(EasyHook.RemoteHooking.IContext context, string channelName, CaptureConfig config)
         {
             // When not using GAC there can be issues with remoting assemblies resolving correctly
             // this is a workaround that ensures that the current assembly is correctly associated
@@ -57,7 +57,7 @@ namespace Capture
             // NOTE: This is running in the target process
             captureInterface.Message(MessageType.Information, "Injected into process Id:{0}.", EasyHook.RemoteHooking.GetCurrentProcessId());
 
-            runWait = new ManualResetEvent(false);
+            runWait = new System.Threading.ManualResetEvent(false);
             runWait.Reset();
             try
             {
@@ -111,22 +111,19 @@ namespace Capture
                 System.Runtime.Remoting.Channels.ChannelServices.UnregisterChannel(clientServerChannel);
 
                 // Always sleep long enough for any remaining messages to complete sending
-                Thread.Sleep(100);
+                System.Threading.Thread.Sleep(100);
             }
         }
 
         private void DisposeDirectXHook()
         {
             if (directXHooks == null) return;
-
+            
             try
             {
                 captureInterface.Message(MessageType.Debug, "Disposing of hooks...");
             }
-            catch (RemotingException)
-            {
-                
-            }
+            catch (System.Runtime.Remoting.RemotingException) { } // Ignore channel remoting errors
 
             // Dispose of the hooks so they are removed
             foreach (var dxHook in directXHooks)
@@ -167,7 +164,7 @@ namespace Capture
                         d3D101Loaded = NativeMethods.GetModuleHandle("d3d10_1.dll");
                         d3D11Loaded = NativeMethods.GetModuleHandle("d3d11.dll");
                         d3D111Loaded = NativeMethods.GetModuleHandle("d3d11_1.dll");
-                        Thread.Sleep(delayTime);
+                        System.Threading.Thread.Sleep(delayTime);
 
                         if (retryCount * delayTime <= 5000) continue;
                         
@@ -220,31 +217,24 @@ namespace Capture
                         case Direct3DVersion.DIRECT_3D_9:
                             directXHook = new DXHookD3D9(captureInterface);
                             break;
-                        
                         case Direct3DVersion.DIRECT_3D_10:
                             directXHook = new DXHookD3D10(captureInterface);
                             break;
-                        
                         case Direct3DVersion.DIRECT_3D_10_1:
                             directXHook = new DXHookD3D101(captureInterface);
                             break;
-                        
                         case Direct3DVersion.DIRECT_3D_11:
                             directXHook = new DXHookD3D11(captureInterface);
                             break;
-                        
+                        //case Direct3DVersion.Direct3D11_1:
+                        //    _directXHook = new DXHookD3D11_1(_interface);
+                        //    return;
                         case Direct3DVersion.UNKNOWN:
-                            captureInterface.Message(MessageType.Error, "Unsupported Direct3D version: {0}", version);
                             break;
-                        
                         case Direct3DVersion.AUTO_DETECT:
-                            captureInterface.Message(MessageType.Error, "Unsupported Direct3D version: {0}", version);
                             break;
-                        
                         case Direct3DVersion.DIRECT_3D_11_1:
-                            captureInterface.Message(MessageType.Error, "Unsupported Direct3D version: {0}", version);
                             break;
-                        
                         default:
                             captureInterface.Message(MessageType.Error, "Unsupported Direct3D version: {0}", version);
                             return false;
@@ -257,7 +247,6 @@ namespace Capture
                 }
 
                 return true;
-
             }
             catch (Exception e)
             {
@@ -281,9 +270,9 @@ namespace Capture
             {
                 try
                 {
-                    while (Interlocked.Read(ref stopCheckAlive) == 0)
+                    while (System.Threading.Interlocked.Read(ref stopCheckAlive) == 0)
                     {
-                        Thread.Sleep(1000);
+                        System.Threading.Thread.Sleep(1000);
 
                         // .NET Remoting exceptions will throw RemotingException
                         captureInterface.Ping();
@@ -304,7 +293,7 @@ namespace Capture
         /// </summary>
         private void StopCheckHostIsAliveThread()
         {
-            Interlocked.Increment(ref stopCheckAlive);
+            System.Threading.Interlocked.Increment(ref stopCheckAlive);
         }
 
         #endregion

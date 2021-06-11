@@ -262,18 +262,18 @@
     </Resource>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\Direct3DHook\Capture\Capture.csproj">
-      <Project>{23178a3d-2ac0-419a-b1b6-59ca45191270}</Project>
-      <Name>Capture</Name>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
     <Content Include="EasyHook32.dll" />
     <Content Include="EasyHook32Svc.exe" />
     <Content Include="EasyHook64.dll" />
     <Content Include="EasyHook64Svc.exe" />
     <Content Include="EasyLoad32.dll" />
     <Content Include="EasyLoad64.dll" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Capture\Capture.csproj">
+      <Project>{23178a3d-2ac0-419a-b1b6-59ca45191270}</Project>
+      <Name>Capture</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">

@@ -8,7 +8,7 @@ using Capture.Hook;
 
 namespace Capture
 {
-    public class CaptureProcess : IDisposable
+    public sealed class CaptureProcess : IDisposable
     {
         /// <summary>
         /// Must be null to allow a random channel name to be generated
@@ -89,7 +89,6 @@ namespace Capture
             Dispose(false);
         }
 
-
         #region Private methods
 
         /// <summary>
@@ -144,7 +143,7 @@ namespace Capture
 
         #region IDispose
 
-        private bool isDisposed;
+        public bool IsDisposed;
 
         public void Dispose()
         {
@@ -152,9 +151,9 @@ namespace Capture
             GC.SuppressFinalize(this);
         }
 
-        protected virtual void Dispose(bool disposing)
+        private void Dispose(bool disposing)
         {
-            if (isDisposed) return;
+            if (IsDisposed) return;
             
             if (disposing)
             {
@@ -162,7 +161,7 @@ namespace Capture
                 CaptureInterface.Disconnect();
             }
 
-            isDisposed = true;
+            IsDisposed = true;
         }
 
         #endregion

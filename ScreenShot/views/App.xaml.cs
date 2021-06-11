@@ -76,8 +76,11 @@ namespace ScreenShot.views
         
         private void HandleCaptureImageShortcut()
         {
-            var hwnd = WindowHistory.APPLICATION_HISTORY.Last.HWND;
-
+            var windowHistoryItem = WindowHistory.APPLICATION_HISTORY.Last;
+                
+            if (windowHistoryItem == null) return;
+                    
+            var hwnd = windowHistoryItem.HWND;
             var isGameWindow = GraphicsUtil.IsFullscreenGameWindow(hwnd);
             if (isGameWindow == null)
             {

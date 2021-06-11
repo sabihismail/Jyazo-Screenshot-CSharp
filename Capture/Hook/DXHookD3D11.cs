@@ -378,7 +378,8 @@ namespace Capture.Hook
 
                         if (Request.RegionToCapture.Width > 0)
                         {
-                            captureRegion = new Rectangle(Request.RegionToCapture.Left, Request.RegionToCapture.Top, Request.RegionToCapture.Right, Request.RegionToCapture.Bottom);
+                            captureRegion = new Rectangle(Request.RegionToCapture.Left, Request.RegionToCapture.Top, Request.RegionToCapture.Right, 
+                                Request.RegionToCapture.Bottom);
                         }
                         else if (Request.Resize.HasValue)
                         {
@@ -398,7 +399,8 @@ namespace Capture.Hook
 
                             // Resolve into _resolvedRT
                             resolvedRtKeyedMutex?.Acquire(0, int.MaxValue);
-                            currentRt.Device.ImmediateContext.ResolveSubresource(currentRt, 0, resolvedRt, 0, resolvedRt.Description.Format);
+                            currentRt.Device.ImmediateContext.ResolveSubresource(currentRt, 0, resolvedRt, 0,
+                                resolvedRt.Description.Format);
                             resolvedRtKeyedMutex?.Release(1);
 
                             if (Request.Resize.HasValue)
@@ -439,8 +441,7 @@ namespace Capture.Hook
                         Request = null;
 
                         var acquireLock = sourceTexture == resolvedRtShared;
-
-
+                        
                         ThreadPool.QueueUserWorkItem(_ =>
                         {
                             // Acquire lock on second device
@@ -528,7 +529,6 @@ namespace Capture.Hook
                             }
                         });
                         
-
                         // Note: it would be possible to capture multiple frames and process them in a background thread
                     }
                     DebugMessage("PresentHook: Copy BackBuffer time: " + (DateTime.Now - startTime));
@@ -541,8 +541,7 @@ namespace Capture.Hook
                 if (Config.ShowOverlay && displayOverlays != null)
                 {
                     // Initialise Overlay Engine
-                    if (swapChainPointer != swapChainIn.NativePointer || overlayEngine == null
-                        || IsOverlayUpdatePending)
+                    if (swapChainPointer != swapChainIn.NativePointer || overlayEngine == null || IsOverlayUpdatePending)
                     {
                         overlayEngine?.Dispose();
 
@@ -687,7 +686,6 @@ namespace Capture.Hook
                 context.UnmapSubresource(texture, 0);
             }
         }
-
 
         private static Guid PixelFormatFromFormat(Format format)
         {

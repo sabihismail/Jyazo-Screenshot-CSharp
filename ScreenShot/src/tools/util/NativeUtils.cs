@@ -75,15 +75,7 @@ namespace ScreenShot.src.tools.util
         
         [DllImport("shell32.dll")]
         public static extern int SHQueryUserNotificationState(out QueryUserNotificationState pquns);
-        
-        [StructLayout(LayoutKind.Sequential)]
-        private readonly struct ModuleInformation
-        {
-            private readonly IntPtr lpBaseOfDll;
-            private readonly uint SizeOfImage;
-            private readonly IntPtr EntryPoint;
-        }
-        
+
         [StructLayout(LayoutKind.Sequential)]
         public readonly struct Win32Point
         {

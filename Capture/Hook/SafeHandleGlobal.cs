@@ -6,7 +6,7 @@ namespace Capture.Hook
     /// <summary>
     /// Provides a safe handle around a block of unmanaged memory.
     /// </summary>
-    public class SafeHGlobal : SafeHandle
+    public class SafeHandleGlobal : SafeHandle
     {
         /// <summary>
         /// When overridden in a derived class, gets a value indicating whether the handle value is invalid.
@@ -15,10 +15,10 @@ namespace Capture.Hook
         public override bool IsInvalid => handle == IntPtr.Zero;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="SafeHGlobal"/> class.
+        /// Initializes a new instance of the <see cref="SafeHandleGlobal"/> class.
         /// </summary>
         /// <param name="sizeInBytes">The size of the block of memory to allocate, in bytes.</param>
-        public SafeHGlobal(int sizeInBytes)
+        public SafeHandleGlobal(int sizeInBytes)
             : base(Marshal.AllocHGlobal(sizeInBytes), true)
         {
         }

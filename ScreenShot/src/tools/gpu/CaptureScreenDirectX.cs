@@ -12,7 +12,7 @@ namespace ScreenShot.src.tools.gpu
 {
     public static class CaptureScreenDirectX
     {
-        public static void Capture(IntPtr hwnd, Direct3DVersion direct3DVersion = Direct3DVersion.AutoDetect)
+        public static void Capture(IntPtr hwnd, Direct3DVersion direct3DVersion = Direct3DVersion.AUTO_DETECT)
         {
             NativeUtils.GetWindowThreadProcessId(hwnd, out var processID);
             var process = Process.GetProcessById(processID);
