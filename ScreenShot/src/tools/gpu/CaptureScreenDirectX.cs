@@ -7,6 +7,7 @@ using Capture;
 using Capture.Hook.Common;
 using Capture.Interface;
 using ScreenShot.src.tools.util;
+using SharpDX.Direct2D1;
 
 namespace ScreenShot.src.tools.gpu
 {
@@ -35,6 +36,12 @@ namespace ScreenShot.src.tools.gpu
                 {
                     Elements = new List<IOverlayElement>
                     {
+                        new RectangleElement
+                        {
+                            Location = new Point(0, 0),
+                            Width = -1,
+                            Height = -1
+                        },
                         new FramesPerSecond(new Font("Arial", 16, FontStyle.Bold))
                         {
                             Location = new Point(0, 0),
@@ -50,8 +57,10 @@ namespace ScreenShot.src.tools.gpu
             var captureProcess = new CaptureProcess(process, captureConfig, captureInterface);
             while (!captureProcess.IsDisposed)
             {
-                Thread.Sleep(1000);
+                Thread.Sleep(500);
             }
+            
+            Debug.WriteLine("Disconnected from DirectX Hook");
         }
         
         /*

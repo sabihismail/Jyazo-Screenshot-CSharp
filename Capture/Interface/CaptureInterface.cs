@@ -125,7 +125,7 @@ namespace Capture.Interface
 
         #region Still image Capture
 
-        private object @lock = new();
+        private object mutex = new();
         private Guid? requestId;
         private Action<Screenshot> completeScreenshot;
         private ManualResetEvent wait = new(false);
@@ -147,7 +147,7 @@ namespace Capture.Interface
         /// <param name="format"></param>
         public Screenshot GetScreenshot(Rectangle region, TimeSpan timeout, Size? resize, ImageFormat format)
         {
-            lock (@lock)
+            lock (mutex)
             {
                 Screenshot result = null;
                 requestId = Guid.NewGuid();
@@ -245,6 +245,7 @@ namespace Capture.Interface
         {
             if (duration.TotalMilliseconds <= 0)
                 throw new ArgumentException(@"Duration must be larger than 0", nameof(duration));
+            
             SafeInvokeDisplayText(new DisplayTextEventArgs(text, duration));
         }
 
@@ -494,7 +495,6 @@ namespace Capture.Interface
             return DateTime.Now;
         }
     }
-
 
     /// <summary>
     /// Client event proxy for marshalling event handlers

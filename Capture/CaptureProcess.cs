@@ -40,8 +40,11 @@ namespace Capture
             {
                 throw new ProcessAlreadyHookedException();
             }
+            
+            Process = process;
+            Process.EnableRaisingEvents = true;
 
-            captureInterface.ProcessId = process.Id;
+            captureInterface.ProcessId = Process.Id;
             CaptureInterface = captureInterface;
             //_serverInterface = new CaptureInterface() { ProcessId = process.Id };
 
@@ -55,10 +58,10 @@ namespace Capture
             {
                 // Inject DLL into target process
                 RemoteHooking.Inject(
-                    process.Id,
+                    Process.Id,
                     InjectionOptions.Default,
-                    typeof(CaptureInterface).Assembly.Location,//"Capture.dll", // 32-bit version (the same because AnyCPU) could use different assembly that links to 32-bit C++ helper dll
-                    typeof(CaptureInterface).Assembly.Location, //"Capture.dll", // 64-bit version (the same because AnyCPU) could use different assembly that links to 64-bit C++ helper dll
+                    typeof(CaptureInterface).Assembly.Location, // 32-bit (the same because AnyCPU) could use different assembly that links to 32-bit C++ helper dll
+                    typeof(CaptureInterface).Assembly.Location, // 64-bit (the same because AnyCPU) could use different assembly that links to 64-bit C++ helper dll
                     // the optional parameter list...
                     channelName, // The name of the IPC channel for the injected assembly to connect to
                     config
@@ -69,9 +72,7 @@ namespace Capture
                 throw new InjectionFailedException(e);
             }
 
-            HookManager.AddHookedProcess(process.Id);
-
-            Process = process;
+            HookManager.AddHookedProcess(Process.Id);
 
             // Ensure the target process is in the foreground,
             // this prevents an issue where the target app appears to be in 
@@ -80,6 +81,11 @@ namespace Capture
             //       may still be an issue - switching between windowed and 
             //       fullscreen fixes the issue however (see ScreenshotInjection.cs for another option)
             BringProcessWindowToFront();
+
+            Process.Exited += (_, _) =>
+            {
+                Dispose();
+            };
         }
 
         private CaptureInterface CaptureInterface { get; }

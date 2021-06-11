@@ -50,8 +50,7 @@ namespace Capture.Hook.Common
 
         public ImageElement() { }
 
-        public ImageElement(string filename):
-            this(new Bitmap(filename), true)
+        public ImageElement(string filename) : this(new Bitmap(filename), true)
         {
             Filename = filename;
         }

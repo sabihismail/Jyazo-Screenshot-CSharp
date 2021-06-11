@@ -17,15 +17,17 @@ namespace Capture.Hook.DX11
         private bool DeferredContext => deviceContext.TypeInfo == DeviceContextType.Deferred;
 
         private bool initialised;
-        private bool initialising;
+        private bool initializing;
 
         private Device device;
         private DeviceContext deviceContext;
+        private RawViewportF[] viewportF;
         private Texture2D renderTarget;
         private RenderTargetView renderTargetView;
         private DXSprite spriteEngine;
         private readonly Dictionary<string, DXFont> fontCache = new();
         private readonly Dictionary<Element, DXImage> imageCache = new();
+        private readonly Dictionary<string, DXRectangle> rectangleCache = new();
 
         public DXOverlayEngine()
         {
@@ -45,14 +47,13 @@ namespace Capture.Hook.DX11
 
         private bool Initialise(Device deviceIn, Texture2D renderTargetIn)
         {
-            if (initialising)
+            if (initializing)
                 return false;
 
-            initialising = true;
+            initializing = true;
             
             try
             {
-
                 device = deviceIn;
                 renderTarget = renderTargetIn;
                 try
@@ -77,6 +78,8 @@ namespace Capture.Hook.DX11
                 if (!spriteEngine.Initialize())
                     return false;
 
+                // Required for any components that look for screen width/height
+                Begin();
                 // Initialise any resources required for overlay elements
                 InitialiseElementResources();
 
@@ -85,7 +88,7 @@ namespace Capture.Hook.DX11
             }
             finally
             {
-                initialising = false;
+                initializing = false;
             }
         }
 
@@ -102,6 +105,10 @@ namespace Capture.Hook.DX11
                     case ImageElement imageElement:
                         GetImageForImageElement(imageElement);
                         break;
+                        
+                    case RectangleElement rectangleElement:
+                        GetRectangleForRectangleElement(rectangleElement);
+                        break;
                 }
             }
         }
@@ -110,7 +117,7 @@ namespace Capture.Hook.DX11
         {
             //if (!DeferredContext)
             //{
-                RawViewportF[] viewportF = { new ViewportF(0, 0, renderTarget.Description.Width, renderTarget.Description.Height, 0, 1) };
+                viewportF = new RawViewportF[] { new ViewportF(0, 0, renderTarget.Description.Width, renderTarget.Description.Height, 0, 1) };
                 deviceContext.Rasterizer.SetViewports(viewportF);
                 deviceContext.OutputMerger.SetTargets(renderTargetView);
             //}
@@ -135,6 +142,7 @@ namespace Capture.Hook.DX11
                         var font = GetFontForTextElement(textElement);
                         if (font != null && !string.IsNullOrEmpty(textElement.Text))
                             spriteEngine.DrawString(textElement.Location.X, textElement.Location.Y, textElement.Text, textElement.Color, font);
+                        
                         break;
                     }
                     case ImageElement imageElement:
@@ -142,6 +150,15 @@ namespace Capture.Hook.DX11
                         var image = GetImageForImageElement(imageElement);
                         if (image != null)
                             spriteEngine.DrawImage(imageElement.Location.X, imageElement.Location.Y, imageElement.Scale, imageElement.Angle, imageElement.Tint, image);
+                        
+                        break;
+                    }
+                    case RectangleElement rectangleElement:
+                    {
+                        var rectangle = GetRectangleForRectangleElement(rectangleElement);
+                        if (rectangle != null)
+                            spriteEngine.DrawRectangle(rectangleElement.Location.X, rectangleElement.Location.Y, rectangleElement.Colour, rectangle);
+                        
                         break;
                     }
                 }
@@ -152,12 +169,11 @@ namespace Capture.Hook.DX11
 
         private void End()
         {
-            if (DeferredContext)
-            {
-                var commandList = deviceContext.FinishCommandList(true);
-                device.ImmediateContext.ExecuteCommandList(commandList, true);
-                commandList.Dispose();
-            }
+            if (!DeferredContext) return;
+            
+            var commandList = deviceContext.FinishCommandList(true);
+            device.ImmediateContext.ExecuteCommandList(commandList, true);
+            commandList.Dispose();
         }
 
         private DXFont GetFontForTextElement(TextElement element)
@@ -180,6 +196,23 @@ namespace Capture.Hook.DX11
             result = ToDispose(new DXImage(device, deviceContext));
             result.Initialise(element.Bitmap);
             imageCache[element] = result;
+
+            return result;
+        }
+
+        private DXRectangle GetRectangleForRectangleElement(RectangleElement element)
+        {
+            const float tolerance = 0.1f;
+            if (Math.Abs(element.Width + 1) < tolerance) element.Width = viewportF[0].Width;
+            if (Math.Abs(element.Height + 1) < tolerance) element.Height = viewportF[0].Height;
+            
+            var rectangleKey = $"{element.Colour}{element.Width}{element.Height}";
+            
+            if (rectangleCache.TryGetValue(rectangleKey, out var result)) return result;
+            
+            result = ToDispose(new DXRectangle(device));
+            result.Initialize(element.Width, element.Height, element.Colour);
+            rectangleCache[rectangleKey] = result;
 
             return result;
         }

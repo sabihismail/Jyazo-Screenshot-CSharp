@@ -103,7 +103,8 @@ namespace Capture.Hook.DX9
                         {
                             var font = GetFontForTextElement(textElement);
                             if (font != null && !string.IsNullOrEmpty(textElement.Text))
-                                font.DrawText(sprite, textElement.Text, textElement.Location.X, textElement.Location.Y, new ColorBGRA(textElement.Color.R, textElement.Color.G, textElement.Color.B, textElement.Color.A));
+                                font.DrawText(sprite, textElement.Text, textElement.Location.X, textElement.Location.Y, new ColorBGRA(textElement.Color.R, 
+                                    textElement.Color.G, textElement.Color.B, textElement.Color.A));
                             break;
                         }
                         case ImageElement imageElement:
@@ -115,7 +116,8 @@ namespace Capture.Hook.DX9
 
                             var image = GetImageForImageElement(imageElement);
                             if (image != null)
-                                sprite.Draw(image, new ColorBGRA(imageElement.Tint.R, imageElement.Tint.G, imageElement.Tint.B, imageElement.Tint.A), null, null, new Vector3(imageElement.Location.X, imageElement.Location.Y, 0));
+                                sprite.Draw(image, new ColorBGRA(imageElement.Tint.R, imageElement.Tint.G, imageElement.Tint.B, imageElement.Tint.A), 
+                                    null, null, new Vector3(imageElement.Location.X, imageElement.Location.Y, 0));
 
                             //Reset the transform for other elements
                             sprite.Transform = Matrix.Identity;

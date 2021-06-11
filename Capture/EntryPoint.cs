@@ -1,24 +1,20 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using Capture.Hook;
 using Capture.Interface;
-using System.Threading.Tasks;
-using System.Runtime.Remoting.Channels.Ipc;
 
 namespace Capture
 {
     // ReSharper disable once UnusedType.Global
     public class EntryPoint : EasyHook.IEntryPoint
     {
-        private readonly List<IDXHook> directXHooks = new();
+        private readonly System.Collections.Generic.List<IDXHook> directXHooks = new();
         private readonly ClientCaptureInterfaceEventProxy clientEventProxy = new();
-        private readonly IpcServerChannel clientServerChannel = null;
+        private readonly System.Runtime.Remoting.Channels.Ipc.IpcServerChannel clientServerChannel = null;
         private readonly CaptureInterface captureInterface;
         private IDXHook directXHook;
         private System.Threading.ManualResetEvent runWait;
 
-        [SuppressMessage("ReSharper", "UnusedParameter.Local")]
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("ReSharper", "UnusedParameter.Local")]
         public EntryPoint(EasyHook.RemoteHooking.IContext context, string channelName, CaptureConfig config)
         {
             // Get reference to IPC to host application
@@ -40,7 +36,7 @@ namespace Capture
                 TypeFilterLevel = System.Runtime.Serialization.Formatters.TypeFilterLevel.Full
             };
 
-            var clientServerChannelIn = new IpcServerChannel(properties, binaryProv);
+            var clientServerChannelIn = new System.Runtime.Remoting.Channels.Ipc.IpcServerChannel(properties, binaryProv);
             System.Runtime.Remoting.Channels.ChannelServices.RegisterChannel(clientServerChannelIn, false);
             
             #endregion
@@ -55,7 +51,7 @@ namespace Capture
             currentDomain.AssemblyResolve += (_, args) => GetType().Assembly.FullName == args.Name ? GetType().Assembly : null;
 
             // NOTE: This is running in the target process
-            captureInterface.Message(MessageType.Information, "Injected into process Id:{0}.", EasyHook.RemoteHooking.GetCurrentProcessId());
+            captureInterface.Message(MessageType.Information, "Injected into Process ID: {0}.",  EasyHook.RemoteHooking.GetCurrentProcessId());
 
             runWait = new System.Threading.ManualResetEvent(false);
             runWait.Reset();
@@ -71,7 +67,6 @@ namespace Capture
                 // Important Note:
                 // accessing the _interface from within a _clientEventProxy event handler must always 
                 // be done on a different thread otherwise it will cause a deadlock
-
                 clientEventProxy.Disconnected += () =>
                 {
                     // We can now signal the exit of the Run method
@@ -136,7 +131,7 @@ namespace Capture
         {
             var version = config.Direct3DVersion;
 
-            var loadedVersions = new List<Direct3DVersion>();
+            var loadedVersions = new System.Collections.Generic.List<Direct3DVersion>();
 
             var isX64Process = EasyHook.RemoteHooking.IsX64Process(EasyHook.RemoteHooking.GetCurrentProcessId());
             captureInterface.Message(MessageType.Information, "Remote process is a {0}-bit process.", isX64Process ? "64" : "32");
@@ -230,10 +225,13 @@ namespace Capture
                         //    _directXHook = new DXHookD3D11_1(_interface);
                         //    return;
                         case Direct3DVersion.UNKNOWN:
+                            captureInterface.Message(MessageType.Error, "Unsupported Direct3D version: {0}", version);
                             break;
                         case Direct3DVersion.AUTO_DETECT:
+                            captureInterface.Message(MessageType.Error, "Unsupported Direct3D version: {0}", version);
                             break;
                         case Direct3DVersion.DIRECT_3D_11_1:
+                            captureInterface.Message(MessageType.Error, "Unsupported Direct3D version: {0}", version);
                             break;
                         default:
                             captureInterface.Message(MessageType.Error, "Unsupported Direct3D version: {0}", version);
@@ -258,7 +256,7 @@ namespace Capture
 
         #region Check Host Is Alive
 
-        private Task checkAlive;
+        private System.Threading.Tasks.Task checkAlive;
         private long stopCheckAlive;
         
         /// <summary>
@@ -266,7 +264,7 @@ namespace Capture
         /// </summary>
         private void StartCheckHostIsAliveThread()
         {
-            checkAlive = new Task(() =>
+            checkAlive = new System.Threading.Tasks.Task(() =>
             {
                 try
                 {

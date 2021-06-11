@@ -19,6 +19,47 @@ namespace Capture.Hook.DX11
 {
     public class DXSprite : Component
     {
+        # region Shaders
+        
+        private const string SPRITE_FX = @"
+Texture2D SpriteTex;
+SamplerState samLinear {
+    Filter = MIN_MAG_MIP_LINEAR;
+    AddressU = WRAP;
+    AddressV = WRAP;
+};
+struct VertexIn {
+    float3 PosNdc : POSITION;
+    float2 Tex    : TEXCOORD;
+    float4 Color  : COLOR;
+};
+struct VertexOut {
+    float4 PosNdc : SV_POSITION;
+    float2 Tex    : TEXCOORD;
+    float4 Color  : COLOR;
+};
+VertexOut VS(VertexIn vin) {
+    VertexOut vOut;
+    vOut.PosNdc = float4(vin.PosNdc, 1.0f);
+    vOut.Tex    = vin.Tex;
+    vOut.Color  = vin.Color;
+    return vOut;
+};
+float4 PS(VertexOut pin) : SV_Target {
+    return pin.Color*SpriteTex.Sample(samLinear, pin.Tex);
+};
+technique11 SpriteTech {
+    pass P0 {
+        SetVertexShader( CompileShader( vs_5_0, VS() ) );
+        SetHullShader( NULL );
+        SetDomainShader( NULL );
+        SetGeometryShader( NULL );
+        SetPixelShader( CompileShader( ps_5_0, PS() ) );
+    }
+};";
+        
+        #endregion
+        
         private readonly Device device;
         private readonly DeviceContext deviceContext;
 
@@ -66,7 +107,7 @@ namespace Capture.Hook.DX11
         private ShaderResourceView batchTexSrv;
         private InputLayout inputLayout;
         private Buffer vb;
-        private Buffer ib;
+        private Buffer buffer;
         private int texWidth;
         private int texHeight;
         private float screenWidth;
@@ -79,123 +120,84 @@ namespace Capture.Hook.DX11
         {
             Debug.Assert(!initialized);
 
-            #region Shaders
-            const string spriteFx = @"Texture2D SpriteTex;
-SamplerState samLinear {
-    Filter = MIN_MAG_MIP_LINEAR;
-    AddressU = WRAP;
-    AddressV = WRAP;
-};
-struct VertexIn {
-    float3 PosNdc : POSITION;
-    float2 Tex    : TEXCOORD;
-    float4 Color  : COLOR;
-};
-struct VertexOut {
-    float4 PosNdc : SV_POSITION;
-    float2 Tex    : TEXCOORD;
-    float4 Color  : COLOR;
-};
-VertexOut VS(VertexIn vin) {
-    VertexOut vOut;
-    vOut.PosNdc = float4(vin.PosNdc, 1.0f);
-    vOut.Tex    = vin.Tex;
-    vOut.Color  = vin.Color;
-    return vOut;
-};
-float4 PS(VertexOut pin) : SV_Target {
-    return pin.Color*SpriteTex.Sample(samLinear, pin.Tex);
-};
-technique11 SpriteTech {
-    pass P0 {
-        SetVertexShader( CompileShader( vs_5_0, VS() ) );
-        SetHullShader( NULL );
-        SetDomainShader( NULL );
-        SetGeometryShader( NULL );
-        SetPixelShader( CompileShader( ps_5_0, PS() ) );
-    }
-};";
-            #endregion
+            compiledFx = ToDispose(ShaderBytecode.Compile(SPRITE_FX, "SpriteTech", "fx_5_0"));
+            
+            if (compiledFx.HasErrors)
+                return false;
 
-            compiledFx = ToDispose(ShaderBytecode.Compile(spriteFx, "SpriteTech", "fx_5_0"));
+            effect = ToDispose(new Effect(device, compiledFx));
             {
-                if (compiledFx.HasErrors)
-                    return false;
+                spriteTech = ToDispose(effect.GetTechniqueByName("SpriteTech"));
+                spriteMap = ToDispose(effect.GetVariableByName("SpriteTex").AsShaderResource());
 
-                effect = ToDispose(new Effect(device, compiledFx));
+                using (var pass = spriteTech.GetPassByIndex(0))
                 {
-                    spriteTech = ToDispose(effect.GetTechniqueByName("SpriteTech"));
-                    spriteMap = ToDispose(effect.GetVariableByName("SpriteTex").AsShaderResource());
-
-                    using (var pass = spriteTech.GetPassByIndex(0))
+                    InputElement[] layoutDesc = 
                     {
-                        InputElement[] layoutDesc = 
-                        {
-                            new("POSITION", 0, Format.R32G32B32_Float, 0, 0, InputClassification.PerVertexData, 0),
-                            new("TEXCOORD", 0, Format.R32G32_Float, 12, 0, InputClassification.PerVertexData, 0),
-                            new("COLOR", 0, Format.R32G32B32A32_Float, 20, 0, InputClassification.PerVertexData, 0)
-                        };
-
-                        inputLayout = ToDispose(new InputLayout(device, pass.Description.Signature, layoutDesc));
-                    }
-                    // Create Vertex Buffer
-                    var vbd = new BufferDescription
-                    {
-                        SizeInBytes = 2048 * Marshal.SizeOf(typeof(SpriteVertex)),
-                        Usage = ResourceUsage.Dynamic,
-                        BindFlags = BindFlags.VertexBuffer,
-                        CpuAccessFlags = CpuAccessFlags.Write,
-                        OptionFlags = ResourceOptionFlags.None,
-                        StructureByteStride = 0
+                        new("POSITION", 0, Format.R32G32B32_Float, 0, 0, InputClassification.PerVertexData, 0),
+                        new("TEXCOORD", 0, Format.R32G32_Float, 12, 0, InputClassification.PerVertexData, 0),
+                        new("COLOR", 0, Format.R32G32B32A32_Float, 20, 0, InputClassification.PerVertexData, 0)
                     };
 
-                    vb = ToDispose(new Buffer(device, vbd));
-
-                    // Create and initialise Index Buffer
-
-                    var indices = new short[3072];
-
-                    for (ushort i = 0; i < 512; ++i)
-                    {
-                        indices[i * 6] = (short)(i * 4);
-                        indices[i * 6 + 1] = (short)(i * 4 + 1);
-                        indices[i * 6 + 2] = (short)(i * 4 + 2);
-                        indices[i * 6 + 3] = (short)(i * 4);
-                        indices[i * 6 + 4] = (short)(i * 4 + 2);
-                        indices[i * 6 + 5] = (short)(i * 4 + 3);
-                    }
-
-                    indexBuffer = ToDispose(new SafeHandleGlobal(indices.Length * Marshal.SizeOf(indices[0])));
-                    Marshal.Copy(indices, 0, indexBuffer.DangerousGetHandle(), indices.Length);
-
-                    var ibd = new BufferDescription
-                    {
-                        SizeInBytes = 3072 * Marshal.SizeOf(typeof(short)),
-                        Usage = ResourceUsage.Immutable,
-                        BindFlags = BindFlags.IndexBuffer,
-                        CpuAccessFlags = CpuAccessFlags.None,
-                        OptionFlags = ResourceOptionFlags.None,
-                        StructureByteStride = 0
-                    };
-                    
-                    ib = ToDispose(new Buffer(device, indexBuffer.DangerousGetHandle(), ibd));
-
-                    var transparentDesc = new BlendStateDescription
-                    {
-                        AlphaToCoverageEnable = false,
-                        IndependentBlendEnable = false
-                    };
-                    transparentDesc.RenderTarget[0].IsBlendEnabled = true;
-                    transparentDesc.RenderTarget[0].SourceBlend = BlendOption.SourceAlpha;
-                    transparentDesc.RenderTarget[0].DestinationBlend = BlendOption.InverseSourceAlpha;
-                    transparentDesc.RenderTarget[0].BlendOperation = BlendOperation.Add;
-                    transparentDesc.RenderTarget[0].SourceAlphaBlend = BlendOption.One;
-                    transparentDesc.RenderTarget[0].DestinationAlphaBlend = BlendOption.Zero;
-                    transparentDesc.RenderTarget[0].AlphaBlendOperation = BlendOperation.Add;
-                    transparentDesc.RenderTarget[0].RenderTargetWriteMask = ColorWriteMaskFlags.All;
-
-                    transparentBs = ToDispose(new BlendState(device, transparentDesc));
+                    inputLayout = ToDispose(new InputLayout(device, pass.Description.Signature, layoutDesc));
                 }
+                // Create Vertex Buffer
+                var vbd = new BufferDescription
+                {
+                    SizeInBytes = 2048 * Marshal.SizeOf(typeof(SpriteVertex)),
+                    Usage = ResourceUsage.Dynamic,
+                    BindFlags = BindFlags.VertexBuffer,
+                    CpuAccessFlags = CpuAccessFlags.Write,
+                    OptionFlags = ResourceOptionFlags.None,
+                    StructureByteStride = 0
+                };
+
+                vb = ToDispose(new Buffer(device, vbd));
+
+                // Create and initialise Index Buffer
+
+                var indices = new short[3072];
+
+                for (ushort i = 0; i < 512; ++i)
+                {
+                    indices[i * 6] = (short)(i * 4);
+                    indices[i * 6 + 1] = (short)(i * 4 + 1);
+                    indices[i * 6 + 2] = (short)(i * 4 + 2);
+                    indices[i * 6 + 3] = (short)(i * 4);
+                    indices[i * 6 + 4] = (short)(i * 4 + 2);
+                    indices[i * 6 + 5] = (short)(i * 4 + 3);
+                }
+
+                indexBuffer = ToDispose(new SafeHandleGlobal(indices.Length * Marshal.SizeOf(indices[0])));
+                Marshal.Copy(indices, 0, indexBuffer.DangerousGetHandle(), indices.Length);
+
+                var bufferDescription = new BufferDescription
+                {
+                    SizeInBytes = 3072 * Marshal.SizeOf(typeof(short)),
+                    Usage = ResourceUsage.Immutable,
+                    BindFlags = BindFlags.IndexBuffer,
+                    CpuAccessFlags = CpuAccessFlags.None,
+                    OptionFlags = ResourceOptionFlags.None,
+                    StructureByteStride = 0
+                };
+                
+                buffer = ToDispose(new Buffer(device, indexBuffer.DangerousGetHandle(), bufferDescription));
+
+                var transparentDesc = new BlendStateDescription
+                {
+                    AlphaToCoverageEnable = false,
+                    IndependentBlendEnable = false
+                };
+                transparentDesc.RenderTarget[0].IsBlendEnabled = true;
+                transparentDesc.RenderTarget[0].SourceBlend = BlendOption.SourceAlpha;
+                transparentDesc.RenderTarget[0].DestinationBlend = BlendOption.InverseSourceAlpha;
+                transparentDesc.RenderTarget[0].BlendOperation = BlendOperation.Add;
+                transparentDesc.RenderTarget[0].SourceAlphaBlend = BlendOption.One;
+                transparentDesc.RenderTarget[0].DestinationAlphaBlend = BlendOption.Zero;
+                transparentDesc.RenderTarget[0].AlphaBlendOperation = BlendOperation.Add;
+                transparentDesc.RenderTarget[0].RenderTargetWriteMask = ColorWriteMaskFlags.All;
+
+                transparentBs = ToDispose(new BlendState(device, transparentDesc));
             }
 
             initialized = true;
@@ -213,6 +215,21 @@ technique11 SpriteTech {
             return new Color4(vec);
         }
 
+        public void DrawRectangle(int x, int y, Color colour, DXRectangle rectangle)
+        {
+            var blendFactor = new Color4(1.0f);
+            using var backupBlendState = deviceContext.OutputMerger.GetBlendState(out var backupBlendFactor, out var backupMask);
+            
+            deviceContext.OutputMerger.SetBlendState(transparentBs, blendFactor);
+            
+            BeginBatch(rectangle.GetSrv());
+            
+            Draw(new Rectangle(x, y, rectangle.Width, rectangle.Height), new Rectangle(0, 0, rectangle.Width, rectangle.Height), ToColor4(colour));
+            
+            EndBatch();
+            deviceContext.OutputMerger.SetBlendState(backupBlendState, backupBlendFactor, backupMask);
+        }
+
         public void DrawImage(int x, int y, float scale, float angle, Color? color, DXImage image)
         {
             Debug.Assert(initialized);
@@ -224,7 +241,11 @@ technique11 SpriteTech {
 
             BeginBatch(image.GetSrv());
 
-            Draw(new Rectangle(x, y, (int)(scale * image.Width), (int)(scale * image.Height)), new Rectangle(0, 0, image.Width, image.Height), color.HasValue ? ToColor4(color.Value) : Color4.White, 1.0f, angle);
+            Draw(new Rectangle(x, y, (int)(scale * image.Width), (int)(scale * image.Height)),
+                new Rectangle(0, 0, image.Width, image.Height),
+                color.HasValue ? ToColor4(color.Value) : Color4.White,
+                1.0f,
+                angle);
 
             EndBatch();
             deviceContext.OutputMerger.SetBlendState(backupBlendState, backupBlendFactor, backupMask);
@@ -288,7 +309,6 @@ technique11 SpriteTech {
 
             var tex = batchTexSrv.ResourceAs<Texture2D>();
             {
-
                 var texDesc = tex.Description;
                 texWidth = texDesc.Width;
                 texHeight = texDesc.Height;
@@ -306,9 +326,9 @@ technique11 SpriteTech {
             screenHeight = vp[0].Height;
 
             var stride = Marshal.SizeOf(typeof(SpriteVertex));
-            var offset = 0;
+            const int offset = 0;
             deviceContext.InputAssembler.InputLayout = inputLayout;
-            deviceContext.InputAssembler.SetIndexBuffer(ib, Format.R16_UInt, 0);
+            deviceContext.InputAssembler.SetIndexBuffer(buffer, Format.R16_UInt, 0);
             deviceContext.InputAssembler.SetVertexBuffers(0, new[] { vb }, new[] { stride }, new[] { offset });
             deviceContext.InputAssembler.PrimitiveTopology = PrimitiveTopology.TriangleList;
             spriteMap.SetResource(batchTexSrv);

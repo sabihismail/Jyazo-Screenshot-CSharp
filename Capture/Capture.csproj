@@ -102,7 +102,7 @@
     <Compile Include="CaptureProcess.cs" />
     <Compile Include="Exceptions.cs" />
     <Compile Include="Hook\Common\Element.cs" />
-    <Compile Include="Hook\Common\FramesPerSecond.cs" />
+    <Compile Include="Hook\Common\FramesPerSecondElement.cs" />
     <Compile Include="Hook\Common\ImageElement.cs" />
     <Compile Include="Hook\Common\IOverlay.cs">
       <SubType>Code</SubType>
@@ -111,12 +111,14 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Hook\Common\Overlay.cs" />
+    <Compile Include="Hook\Common\RectangleElement.cs" />
     <Compile Include="Hook\Common\TextElement.cs" />
     <Compile Include="Hook\DX11\ContextState.cs" />
     <Compile Include="Hook\DX11\DeviceManager.cs" />
     <Compile Include="Hook\DX11\DXImage.cs" />
     <Compile Include="Hook\DX11\DXOverlayEngine.cs" />
     <Compile Include="Hook\DX11\DXFont.cs" />
+    <Compile Include="Hook\DX11\DXRectangle.cs" />
     <Compile Include="Hook\DX11\DXSprite.cs" />
     <Compile Include="Hook\DX11\RendererBase.cs" />
     <Compile Include="Hook\DX9\DXOverlayEngine.cs" />

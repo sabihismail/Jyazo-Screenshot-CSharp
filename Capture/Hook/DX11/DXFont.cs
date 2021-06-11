@@ -137,11 +137,11 @@ namespace Capture.Hook.DX11
             fontSheetTex = new Texture2D(device, texDesc, new[] { data });
             if (fontSheetTex == null)
                 return false;
-
+            
             var srvDesc = new ShaderResourceViewDescription
             {
-                Format = Format.B8G8R8A8_UNorm, 
-                Dimension = ShaderResourceViewDimension.Texture2D, 
+                Format = Format.B8G8R8A8_UNorm,
+                Dimension = ShaderResourceViewDimension.Texture2D,
                 Texture2D =
                 {
                     MipLevels = 1, 
@@ -227,7 +227,7 @@ namespace Capture.Hook.DX11
             return width - 1;
         }
 
-        private int GetCharMinX(Bitmap charBitmap)
+        private static int GetCharMinX(Bitmap charBitmap)
         {
             var width = charBitmap.Width;
             var height = charBitmap.Height;
@@ -273,7 +273,6 @@ namespace Capture.Hook.DX11
 
             return charHeight;
         }
-
     }
 }
 
