@@ -23,21 +23,24 @@ namespace ScreenShot.src.tools
 #if DEBUG
             Directory.GetCurrentDirectory() + "\\settings.json";
 #else
-            SAVE_DIRECTORY + "settings.json"
+            SAVE_DIRECTORY + "settings.json";
 #endif
 
         public static readonly string CONFIG_FILE =
 #if DEBUG
             Directory.GetCurrentDirectory() + "\\config.json";
 #else
-            SAVE_DIRECTORY + "config.json"
+            SAVE_DIRECTORY + "config.json";
 #endif
-
-
+        
         public const string API_ENDPOINT_IS_AUTHORIZED = "isAuthorized";
 
         public const string API_ENDPOINT_UPLOAD_SCREENSHOT = "uploadScreenShot";
 
         public const string USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36 Edg/90.0.818.66";
+
+        public const bool OVERRIDE_SERVER_WITH_LOCAL = false;
+
+        public const string OVERRIDE_SERVER = "http://localhost:3000/api/ss";
     }
 }

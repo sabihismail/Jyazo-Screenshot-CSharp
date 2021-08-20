@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using CefSharp;
@@ -6,6 +7,7 @@ using ScreenShot.src.tools;
 
 namespace ScreenShot.views.windows
 {
+    [Obsolete("Chromium Embedded Framework elements are no longer considered 'safe' and so many OAuth implementations no longer allow for them to be used, probably due to bad actors abusing it.")]
     public partial class WebBrowserWindow
     {
         private readonly CEFBrowser cefBrowser;

@@ -133,7 +133,9 @@ float4 PSMain(PixelIn input) : SV_Target
             var context = DeviceManager.Direct3DContext;
 
 #if DEBUG
-            var shaderFlags = ShaderFlags.Debug | ShaderFlags.SkipOptimization;
+            const ShaderFlags shaderFlags = ShaderFlags.Debug | ShaderFlags.SkipOptimization;
+#else
+            const ShaderFlags shaderFlags = ShaderFlags.None;
 #endif
             // Use our HLSL file include handler to resolve #include directives in the HLSL source
             //var includeHandler = new HLSLFileIncludeHandler(System.IO.Path.Combine(System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetEntryAssembly().Location), "Shaders"));

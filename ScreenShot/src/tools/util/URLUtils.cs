@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Net;
 using System.Net.Http;
+using System.Net.Sockets;
 using System.Threading.Tasks;
 using ScreenShot.src.settings;
 
@@ -20,6 +21,17 @@ namespace ScreenShot.src.tools.util
             }
 
             return path + endpoint;
+        }
+
+        public static int GetRandomUnusedPort()
+        {
+            var listener = new TcpListener(IPAddress.Loopback, 0);
+            listener.Start();
+
+            var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+            listener.Stop();
+
+            return port;
         }
 
         public class CookieHttpClient : IDisposable

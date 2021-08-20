@@ -5,12 +5,12 @@ using System.Drawing;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Text;
 using System.Threading;
 using System.Windows.Forms;
 using System.Windows.Input;
-using CefSharp;
-using CefSharp.Wpf;
 using Gma.System.MouseKeyHook;
+using Newtonsoft.Json.Linq;
 using ScreenShot.src.capture;
 using ScreenShot.src.settings;
 using ScreenShot.src.tools;
@@ -23,8 +23,6 @@ namespace ScreenShot.views
 {
     public partial class App
     {
-        private const bool CAPTURE_TESTING = true;
-        
         private static int isAlreadyCapturingScreen;
         
         private NotifyIcon taskbarIcon;
@@ -34,23 +32,12 @@ namespace ScreenShot.views
 
         public App()
         {
-            InitializeCEFSettings();
             InitializeComponent();
 
             ConfigureTaskbar();
             ConfigureShortcuts();
             
             WindowHistory.BeginObservingWindows();
-        }
-
-        private static void InitializeCEFSettings()
-        {
-            var cefSettings = new CefSettings
-            {
-                UserAgent = Constants.USER_AGENT
-            };
-
-            Cef.Initialize(cefSettings);
         }
 
         private void ConfigureShortcuts()
@@ -207,7 +194,7 @@ namespace ScreenShot.views
         private void CheckOAuth2(Action callback)
         {
             // ReSharper disable once ConditionIsAlwaysTrueOrFalse
-            if (!config.EnableOAuth2 || CAPTURE_TESTING)
+            if (!config.EnableOAuth2)
             {
                 callback();
                 return;
@@ -234,6 +221,7 @@ namespace ScreenShot.views
             return combination;
         }
 
+        // OAuth2 Flow based on https://github.com/googlesamples/oauth-apps-for-windows/blob/master/OAuthDesktopApp/OAuthDesktopApp/MainWindow.xaml.cs
         private static async void CheckIfOAuth2CredentialsValid(Config config, Action callback)
         {
             var fullURL = JoinURL(config.Server, Constants.API_ENDPOINT_IS_AUTHORIZED);
@@ -283,21 +271,54 @@ namespace ScreenShot.views
                     redirect = uri.GetLeftPart(UriPartial.Authority) + redirectUri.OriginalString;
                 }
 
-                var browserWindow = new WebBrowserWindow(redirect, fullURL);
+                var redirectURI = $"http://{IPAddress.Loopback}:{GetRandomUnusedPort()}/";
 
-                browserWindow.Closed += (_, _) =>
+                var http = new HttpListener();
+                http.Prefixes.Add(redirectURI);
+                http.Start();
+
+                var completeURL = $"{fullURL}?redirect_uri={Uri.EscapeDataString(redirectURI)}";
+
+                Process.Start(completeURL);
+
+                var context = await http.GetContextAsync();
+
+                var contextResponse = context.Response;
+                var baseURL = config.Server.Substring(0, config.Server.IndexOf("/", "https://".Length));
+                var buffer = Encoding.UTF8.GetBytes($"<html><head><meta http-equiv='refresh' content='10;url='{baseURL}'></head><body>Please return to the app.</body></html>");
+                contextResponse.ContentLength64 = buffer.Length;
+                var responseOutput = contextResponse.OutputStream;
+                var responseTask = responseOutput.WriteAsync(buffer, 0, buffer.Length).ContinueWith((task) =>
                 {
-                    var host = uri.Host;
+                    responseOutput.Close();
+                    http.Stop();
+                });
 
-                    var cookies = browserWindow.CookiesDotNet
-                        .FindAll(x => x.Domain.Contains(host));
+                if (context.Request.QueryString.Get("error") != null)
+                {
+                    Logging.Log($"OAuth authorization error: {context.Request.QueryString.Get("error")}");
+                    return;
+                }
 
-                    config.SetOAuth2Cookies(cookies);
+                if (context.Request.QueryString.Get("cookies") == null)
+                {
+                    Logging.Log($"Malformed authorization response: {context.Request.QueryString.Get("cookies")}");
+                    return;
+                }
 
-                    Current.Dispatcher.Invoke(callback);
-                };
+                var cookiesStr = Uri.UnescapeDataString(context.Request.QueryString.Get("cookies"));
+                var cookiesDynamic = JObject.Parse(cookiesStr);
 
-                browserWindow.Show();
+                var domain = baseURL.Substring("https://".Length);
+                var cookies = new List<Cookie>();
+                foreach (var cookie in cookiesDynamic)
+                {
+                    cookies.Add(new Cookie(cookie.Key, cookie.Value.ToString(), "/", domain));
+                }
+
+                config.SetOAuth2Cookies(cookies);
+
+                Current.Dispatcher.Invoke(callback);
             }
             else
             {

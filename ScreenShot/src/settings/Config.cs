@@ -11,7 +11,26 @@ namespace ScreenShot.src.settings
 {
     public class Config
     {
-        public string Server = "";
+        private string ServerImpl = "";
+        
+        public string Server
+        {
+            get
+            {
+#if DEBUG
+                if (Constants.OVERRIDE_SERVER_WITH_LOCAL && !string.IsNullOrWhiteSpace(Constants.OVERRIDE_SERVER)) 
+                { 
+                    return Constants.OVERRIDE_SERVER;
+                }
+#endif
+
+                return ServerImpl;
+            }
+            set
+            {
+                ServerImpl = value;
+            }
+        }
 
         public string ServerPassword = "";
 

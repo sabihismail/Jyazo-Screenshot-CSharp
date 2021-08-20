@@ -6,6 +6,7 @@ using CefSharp.Wpf;
 
 namespace ScreenShot.src.tools
 {
+    [Obsolete("Chromium Embedded Framework elements are no longer considered 'safe' and so many OAuth implementations no longer allow for them to be used, probably due to bad actors abusing it.")]
     public class CEFBrowser
     {
         private readonly LifeSpanHandler lifeSpanHandler = new();

@@ -1,8 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="..\packages\CefSharp.Common.90.6.70\build\CefSharp.Common.props" Condition="Exists('..\packages\CefSharp.Common.90.6.70\build\CefSharp.Common.props')" />
-  <Import Project="..\packages\cef.redist.x86.90.6.7\build\cef.redist.x86.props" Condition="Exists('..\packages\cef.redist.x86.90.6.7\build\cef.redist.x86.props')" />
-  <Import Project="..\packages\cef.redist.x64.90.6.7\build\cef.redist.x64.props" Condition="Exists('..\packages\cef.redist.x64.90.6.7\build\cef.redist.x64.props')" />
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -49,18 +46,6 @@
     </Reference>
     <Reference Include="BetterFolderBrowser, Version=1.2.0.0, Culture=neutral, PublicKeyToken=null">
       <HintPath>..\packages\BetterFolderBrowser.1.2.0\lib\BetterFolderBrowser.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="CefSharp, Version=90.6.70.0, Culture=neutral, PublicKeyToken=40c4b6fc221f4138">
-      <HintPath>..\packages\CefSharp.Common.90.6.70\lib\net452\CefSharp.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="CefSharp.Core, Version=90.6.70.0, Culture=neutral, PublicKeyToken=40c4b6fc221f4138">
-      <HintPath>..\packages\CefSharp.Common.90.6.70\lib\net452\CefSharp.Core.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="CefSharp.Wpf, Version=90.6.70.0, Culture=neutral, PublicKeyToken=40c4b6fc221f4138">
-      <HintPath>..\packages\CefSharp.Wpf.90.6.70\lib\net452\CefSharp.Wpf.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Gma.System.MouseKeyHook, Version=5.6.130.0, Culture=neutral, PublicKeyToken=null">
@@ -120,7 +105,6 @@
     <Compile Include="src\tools\util\GenericUtils.cs" />
     <Compile Include="src\tools\display\WindowHistory.cs" />
     <Compile Include="src\tools\display\WPFScreen.cs" />
-    <Compile Include="src\tools\CEFBrowser.cs" />
     <Compile Include="src\upload\Upload.cs" />
     <Compile Include="src\tools\util\URLUtils.cs" />
     <Compile Include="views\windows\ConfigWindow.xaml.cs">
@@ -128,9 +112,6 @@
     </Compile>
     <Compile Include="views\windows\SettingsWindow.xaml.cs">
       <DependentUpon>SettingsWindow.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="views\windows\WebBrowserWindow.xaml.cs">
-      <DependentUpon>WebBrowserWindow.xaml</DependentUpon>
     </Compile>
     <Page Include="views\capture\CaptureGIFWindow.xaml">
       <SubType>Designer</SubType>
@@ -153,10 +134,6 @@
       <SubType>Code</SubType>
     </Compile>
     <Page Include="views\windows\SettingsWindow.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="views\windows\WebBrowserWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -219,15 +196,9 @@
       <Name>Capture</Name>
     </ProjectReference>
   </ItemGroup>
+  <ItemGroup>
+    <Folder Include="src\deprecated\tools\" />
+    <Folder Include="src\deprecated\views\" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
-    <PropertyGroup>
-      <ErrorText>This project references NuGet package(s) that are missing on this computer. Enable NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105.The missing file is {0}.</ErrorText>
-    </PropertyGroup>
-    <Error Condition="!Exists('..\packages\cef.redist.x64.90.6.7\build\cef.redist.x64.props')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\cef.redist.x64.90.6.7\build\cef.redist.x64.props'))" />
-    <Error Condition="!Exists('..\packages\cef.redist.x86.90.6.7\build\cef.redist.x86.props')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\cef.redist.x86.90.6.7\build\cef.redist.x86.props'))" />
-    <Error Condition="!Exists('..\packages\CefSharp.Common.90.6.70\build\CefSharp.Common.props')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\CefSharp.Common.90.6.70\build\CefSharp.Common.props'))" />
-    <Error Condition="!Exists('..\packages\CefSharp.Common.90.6.70\build\CefSharp.Common.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\CefSharp.Common.90.6.70\build\CefSharp.Common.targets'))" />
-  </Target>
-  <Import Project="..\packages\CefSharp.Common.90.6.70\build\CefSharp.Common.targets" Condition="Exists('..\packages\CefSharp.Common.90.6.70\build\CefSharp.Common.targets')" />
 </Project>
