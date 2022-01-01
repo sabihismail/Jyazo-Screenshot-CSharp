@@ -89,6 +89,7 @@
     </ApplicationDefinition>
     <Compile Include="src\capture\Capture.cs" />
     <Compile Include="src\capture\CaptureGIF.cs" />
+    <Compile Include="src\capture\CaptureWebm.cs" />
     <Compile Include="src\tools\gpu\CaptureScreenDirectX.cs" />
     <Compile Include="src\tools\gpu\GraphicsUtil.cs" />
     <Compile Include="src\tools\util\ConcurrentLinkedList.cs" />
@@ -107,6 +108,9 @@
     <Compile Include="src\tools\display\WPFScreen.cs" />
     <Compile Include="src\upload\Upload.cs" />
     <Compile Include="src\tools\util\URLUtils.cs" />
+    <Compile Include="views\capture\CaptureWebmWindow.xaml.cs">
+      <DependentUpon>CaptureWebmWindow.xaml</DependentUpon>
+    </Compile>
     <Compile Include="views\windows\ConfigWindow.xaml.cs">
       <DependentUpon>ConfigWindow.xaml</DependentUpon>
     </Compile>
@@ -118,6 +122,10 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="views\capture\CaptureScreen.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="views\capture\CaptureWebmWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

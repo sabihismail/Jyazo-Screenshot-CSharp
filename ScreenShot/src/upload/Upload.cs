@@ -53,13 +53,15 @@ namespace ScreenShot.src.upload
         {
             using var client = new CookieHttpClient(config);
             using var formData = new MultipartFormDataContent();
+
+            var titleText = !string.IsNullOrWhiteSpace(WindowHistory.LastWindowTitle) ? WindowHistory.LastWindowTitle : "";
+            var titleContent = new StringContent(titleText, Encoding.UTF8);
+            titleContent.Headers.Remove("Content-Type");
+            formData.Add(titleContent, "title");
             
             var streamContent = new StreamContent(File.OpenRead(file));
             streamContent.Headers.Add("Content-Type", FileUtils.GetContentType(Path.GetExtension(file)));
             formData.Add(streamContent, "uploaded_image", Path.GetFileName(file));
-
-            var titleContent = new StringContent(!string.IsNullOrWhiteSpace(WindowHistory.LastWindowTitle) ? WindowHistory.LastWindowTitle : "", Encoding.UTF8);
-            formData.Add(titleContent, "title");
 
             var server = config.Server;
             if (!config.EnableOAuth2)

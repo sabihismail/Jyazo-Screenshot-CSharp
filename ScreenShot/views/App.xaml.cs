@@ -309,7 +309,12 @@ namespace ScreenShot.views
                 var cookiesStr = Uri.UnescapeDataString(context.Request.QueryString.Get("cookies"));
                 var cookiesDynamic = JObject.Parse(cookiesStr);
 
-                var domain = baseURL.Substring("https://".Length);
+                var domain = baseURL.Substring(baseURL.IndexOf("//", StringComparison.InvariantCulture) + "//".Length);
+                if (domain.Contains(":"))
+                {
+                    domain = domain.Substring(0, domain.IndexOf(":", StringComparison.InvariantCulture));
+                }
+                
                 var cookies = new List<Cookie>();
                 foreach (var cookie in cookiesDynamic)
                 {
