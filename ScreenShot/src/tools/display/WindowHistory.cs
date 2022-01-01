@@ -9,7 +9,7 @@ namespace ScreenShot.src.tools.display
     {
         public static readonly ConcurrentLinkedList<WindowHistoryItem> APPLICATION_HISTORY = new(100);
 
-        public static string LastWindowTitle => APPLICATION_HISTORY.Last.Name;
+        public static string LastWindowTitle => APPLICATION_HISTORY.Count > 0 ? APPLICATION_HISTORY.Last.Name : null;
 
         private const int MAX_TITLE_LENGTH = 256;
         private const int TIME_TO_WAIT = 100;
