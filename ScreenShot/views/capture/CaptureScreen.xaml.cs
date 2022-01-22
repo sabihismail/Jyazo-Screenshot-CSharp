@@ -60,10 +60,10 @@ namespace ScreenShot.views.capture
 
         private void Canvas_OnMouseMove(object sender, MouseEventArgs e)
         {
+            if (rect == null) return;
+            
             if (e.LeftButton == MouseButtonState.Released)
             {
-                if (rect == null) return;
-
                 Canvas_OnMouseUp();
             }
 
