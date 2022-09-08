@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -11,24 +12,27 @@ namespace ScreenShot.src.settings
 {
     public class Config
     {
-        private string ServerImpl = "";
+        private string serverImpl = "";
         
+        [SuppressMessage("ReSharper", "HeuristicUnreachableCode")]
         public string Server
         {
             get
             {
 #if DEBUG
+#pragma warning disable CS0162
                 if (Constants.OVERRIDE_SERVER_WITH_LOCAL && !string.IsNullOrWhiteSpace(Constants.OVERRIDE_SERVER)) 
                 { 
                     return Constants.OVERRIDE_SERVER;
                 }
+#pragma warning restore CS0162
 #endif
 
-                return ServerImpl;
+                return serverImpl;
             }
-            set
+            private set
             {
-                ServerImpl = value;
+                serverImpl = value;
             }
         }
 

@@ -3,7 +3,7 @@ using ScreenShot.views.capture;
 
 namespace ScreenShot.src.capture
 {
-    // ReSharper disable once ClassNeverInstantiated.Global
+    // ReSharper disable once UnusedType.Global
     public class CaptureWebm : Capture
     {
         public CaptureWebm(Settings settings, Config config) 

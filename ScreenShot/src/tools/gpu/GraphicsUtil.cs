@@ -21,16 +21,10 @@ namespace ScreenShot.src.tools.gpu
             // { "d3d12.dll", GraphicsPipeline.DIRECT_X_12 },
         };
 
-        private static readonly List<NativeUtils.QueryUserNotificationState> FULLSCREEN_APPLICATION_MODES = new()
-        {
-            NativeUtils.QueryUserNotificationState.QUNS_BUSY,
-            NativeUtils.QueryUserNotificationState.QUNS_RUNNING_DIRECT_3D_FULL_SCREEN
-        };
-
         public static GraphicsPipeline? IsFullscreenGameWindow(IntPtr hwnd)
         {
             NativeUtils.GetWindowThreadProcessId(hwnd, out var processID);
-            NativeUtils.SHQueryUserNotificationState(out var result);
+            NativeUtils.SHQueryUserNotificationState(out _);
 
             //if (!FULLSCREEN_APPLICATION_MODES.Contains(result)) return null;
             

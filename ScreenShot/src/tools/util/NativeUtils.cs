@@ -28,7 +28,7 @@ namespace ScreenShot.src.tools.util
         public static IEnumerable<string> CollectModules(Process process)
         {
             var collectedModules = new List<string>();
-            var modulePointers = new IntPtr[0];
+            var modulePointers = Array.Empty<IntPtr>();
 
             // Determine number of modules
             if (!EnumProcessModulesEx(process.Handle, modulePointers, 0, out var bytesNeeded, (uint)ModuleFilter.LIST_MODULES_ALL)) return collectedModules;

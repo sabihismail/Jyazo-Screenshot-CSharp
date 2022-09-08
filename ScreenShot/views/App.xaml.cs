@@ -16,6 +16,8 @@ using ScreenShot.src.settings;
 using ScreenShot.src.tools;
 using ScreenShot.src.tools.display;
 using ScreenShot.src.tools.gpu;
+using ScreenShot.src.tools.util;
+using ScreenShot.src.upload;
 using ScreenShot.views.windows;
 using static ScreenShot.src.tools.util.URLUtils;
 
@@ -100,6 +102,13 @@ namespace ScreenShot.views
             var menuCaptureImage = new ToolStripMenuItem("Capture Image", null, (_, _) => TryInstantiateCapture<CaptureImage>());
             var menuCaptureGIF = new ToolStripMenuItem("Capture GIF", null, (_, _) => TryInstantiateCapture<CaptureGIF>());
 
+            var menuUploadImageManually = new ToolStripMenuItem("Upload Image", null, (_, _) =>
+            {
+                var file = FileUtils.BrowseForFile("Images (*.png)|*.png");
+                
+                Upload.UploadFile(file, settings, config);
+            });
+
             var menuViewAllImages = new ToolStripMenuItem("View All Images", null, (_, _) =>
             {
                 if (!settings.SaveAllImages) return;
@@ -122,13 +131,18 @@ namespace ScreenShot.views
                 Shutdown();
             });
 
-            strip.Items.Add(menuCaptureImage);
-            strip.Items.Add(menuCaptureGIF);
-            strip.Items.Add(new ToolStripSeparator());
-            strip.Items.Add(menuViewAllImages);
-            strip.Items.Add(menuSettings);
-            strip.Items.Add(new ToolStripSeparator());
-            strip.Items.Add(menuExit);
+            strip.Items.AddRange(new ToolStripItem[]
+            {
+                menuCaptureImage,
+                menuCaptureGIF,
+                new ToolStripSeparator(),
+                menuUploadImageManually,
+                new ToolStripSeparator(),
+                menuViewAllImages,
+                menuSettings,
+                new ToolStripSeparator(),
+                menuExit
+            });
 
             strip.Items[0].Font = new Font(strip.Items[0].Font, strip.Items[0].Font.Style | FontStyle.Bold);
             strip.Items[1].Font = new Font(strip.Items[1].Font, strip.Items[1].Font.Style | FontStyle.Bold);
@@ -257,38 +271,26 @@ namespace ScreenShot.views
 
             if (status is >= 300 and <= 399)
             {
-                var redirectUri = response.Headers.Location;
-
                 response.Dispose();
 
-                string redirect;
-                if (redirectUri.IsAbsoluteUri)
-                {
-                    redirect = redirectUri.AbsoluteUri;
-                }
-                else
-                {
-                    redirect = uri.GetLeftPart(UriPartial.Authority) + redirectUri.OriginalString;
-                }
-
-                var redirectURI = $"http://{IPAddress.Loopback}:{GetRandomUnusedPort()}/";
+                var redirectUrl = $"http://{IPAddress.Loopback}:{GetRandomUnusedPort()}/";
 
                 var http = new HttpListener();
-                http.Prefixes.Add(redirectURI);
+                http.Prefixes.Add(redirectUrl);
                 http.Start();
 
-                var completeURL = $"{fullURL}?redirect_uri={Uri.EscapeDataString(redirectURI)}";
+                var completeURL = $"{fullURL}?redirect_uri={Uri.EscapeDataString(redirectUrl)}";
 
                 Process.Start(completeURL);
 
                 var context = await http.GetContextAsync();
 
                 var contextResponse = context.Response;
-                var baseURL = config.Server.Substring(0, config.Server.IndexOf("/", "https://".Length));
+                var baseURL = config.Server.Substring(0, config.Server.IndexOf("/", "https://".Length, StringComparison.Ordinal));
                 var buffer = Encoding.UTF8.GetBytes($"<html><head><meta http-equiv='refresh' content='10;url='{baseURL}'></head><body>Please return to the app.</body></html>");
                 contextResponse.ContentLength64 = buffer.Length;
                 var responseOutput = contextResponse.OutputStream;
-                var responseTask = responseOutput.WriteAsync(buffer, 0, buffer.Length).ContinueWith((task) =>
+                await responseOutput.WriteAsync(buffer, 0, buffer.Length).ContinueWith(_ =>
                 {
                     responseOutput.Close();
                     http.Stop();
@@ -318,7 +320,7 @@ namespace ScreenShot.views
                 var cookies = new List<Cookie>();
                 foreach (var cookie in cookiesDynamic)
                 {
-                    cookies.Add(new Cookie(cookie.Key, cookie.Value.ToString(), "/", domain));
+                    cookies.Add(new Cookie(cookie.Key, cookie.Value?.ToString(), "/", domain));
                 }
 
                 config.SetOAuth2Cookies(cookies);

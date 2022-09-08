@@ -77,7 +77,7 @@ namespace ScreenShot.src.tools.display
         private static Rect GetRect(Rectangle value)
         {
             // should x, y, width, height be device-independent-pixels ??
-            return new()
+            return new Rect
             {
                 X = value.X,
                 Y = value.Y,
