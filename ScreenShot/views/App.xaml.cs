@@ -214,10 +214,11 @@ namespace ScreenShot.views
                 return;
             }
 
-            // ReSharper disable once HeuristicUnreachableCode
-#pragma warning disable 162
+#if DEBUG
+            callback();
+#else
             CheckIfOAuth2CredentialsValid(config, callback);
-#pragma warning restore 162
+#endif
         }
 
         private static Combination WPFKeysToFormsKeyCombination(IReadOnlyCollection<Key> keys)
@@ -236,6 +237,7 @@ namespace ScreenShot.views
         }
 
         // OAuth2 Flow based on https://github.com/googlesamples/oauth-apps-for-windows/blob/master/OAuthDesktopApp/OAuthDesktopApp/MainWindow.xaml.cs
+        // ReSharper disable once UnusedMember.Local
         private static async void CheckIfOAuth2CredentialsValid(Config config, Action callback)
         {
             var fullURL = JoinURL(config.Server, Constants.API_ENDPOINT_IS_AUTHORIZED);

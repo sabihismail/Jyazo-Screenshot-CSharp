@@ -37,9 +37,7 @@ namespace ScreenShot.src.tools
 
         public const string API_ENDPOINT_UPLOAD_SCREENSHOT = "uploadScreenShot";
 
-        public const string USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36 Edg/90.0.818.66";
-
-        public const bool OVERRIDE_SERVER_WITH_LOCAL = false;
+        public const bool OVERRIDE_SERVER_WITH_LOCAL = true;
 
         public const string OVERRIDE_SERVER = "http://localhost:3000/api/ss";
     }
