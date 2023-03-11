@@ -25,6 +25,7 @@ namespace ScreenShot.views
 {
     public partial class App
     {
+        public static int isDevMode;
         private static int isAlreadyCapturingScreen;
         
         private NotifyIcon taskbarIcon;
@@ -126,6 +127,19 @@ namespace ScreenShot.views
                 settingsWindow.Show();
             });
 
+            var menuEnableDevMode = new ToolStripMenuItem("Enable Dev Mode", null, (obj, args) =>
+            {
+                if (((ToolStripMenuItem)obj).Checked)
+                {
+                    Interlocked.Increment(ref isDevMode);
+                }
+                else
+                {
+                    Interlocked.Decrement(ref isDevMode);
+                }
+            });
+            menuEnableDevMode.CheckOnClick = true;
+
             var menuExit = new ToolStripMenuItem("Exit", null, (_, _) =>
             {
                 Shutdown();
@@ -140,6 +154,8 @@ namespace ScreenShot.views
                 new ToolStripSeparator(),
                 menuViewAllImages,
                 menuSettings,
+                new ToolStripSeparator(),
+                menuEnableDevMode,
                 new ToolStripSeparator(),
                 menuExit
             });
@@ -207,18 +223,13 @@ namespace ScreenShot.views
 
         private void CheckOAuth2(Action callback)
         {
-            // ReSharper disable once ConditionIsAlwaysTrueOrFalse
-            if (!config.EnableOAuth2)
+            if (!config.EnableOAuth2 || isDevMode == 1)
             {
                 callback();
                 return;
             }
 
-#if DEBUG
-            callback();
-#else
             CheckIfOAuth2CredentialsValid(config, callback);
-#endif
         }
 
         private static Combination WPFKeysToFormsKeyCombination(IReadOnlyCollection<Key> keys)
@@ -238,7 +249,7 @@ namespace ScreenShot.views
 
         // OAuth2 Flow based on https://github.com/googlesamples/oauth-apps-for-windows/blob/master/OAuthDesktopApp/OAuthDesktopApp/MainWindow.xaml.cs
         // ReSharper disable once UnusedMember.Local
-        private static async void CheckIfOAuth2CredentialsValid(Config config, Action callback)
+        public static async void CheckIfOAuth2CredentialsValid(Config config, Action callback)
         {
             var fullURL = JoinURL(config.Server, Constants.API_ENDPOINT_IS_AUTHORIZED);
 

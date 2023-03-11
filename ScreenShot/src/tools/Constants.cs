@@ -39,8 +39,6 @@ namespace ScreenShot.src.tools
 
         public const string USER_AGENT = $"{CREATOR}/{PROGRAM_NAME}/1.0";
 
-        public const bool OVERRIDE_SERVER_WITH_LOCAL = false;
-
         public const string OVERRIDE_SERVER = "http://localhost:3000/api/ss";
     }
 }

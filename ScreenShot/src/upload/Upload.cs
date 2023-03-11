@@ -11,6 +11,7 @@ using ScreenShot.src.settings;
 using ScreenShot.src.tools;
 using ScreenShot.src.tools.display;
 using ScreenShot.src.tools.util;
+using ScreenShot.views;
 using static ScreenShot.src.tools.util.URLUtils;
 
 namespace ScreenShot.src.upload
@@ -81,7 +82,7 @@ namespace ScreenShot.src.upload
                 using var httpResponse = await client.PostAsync(server, formData);
                     
                 var resultStr = await httpResponse.Content.ReadAsStringAsync();
-
+                
                 var result = JsonConvert.DeserializeObject<ServerResponse>(resultStr);
                 if (result == null)
                 {

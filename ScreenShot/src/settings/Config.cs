@@ -7,6 +7,7 @@ using System.Net;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using ScreenShot.src.tools;
+using ScreenShot.views;
 
 namespace ScreenShot.src.settings
 {
@@ -14,26 +15,10 @@ namespace ScreenShot.src.settings
     {
         private string serverImpl = "";
         
-        [SuppressMessage("ReSharper", "HeuristicUnreachableCode")]
         public string Server
         {
-            get
-            {
-#if DEBUG
-#pragma warning disable CS0162
-                if (Constants.OVERRIDE_SERVER_WITH_LOCAL && !string.IsNullOrWhiteSpace(Constants.OVERRIDE_SERVER)) 
-                { 
-                    return Constants.OVERRIDE_SERVER;
-                }
-#pragma warning restore CS0162
-#endif
-
-                return serverImpl;
-            }
-            private set
-            {
-                serverImpl = value;
-            }
+            get => App.isDevMode == 1 ? Constants.OVERRIDE_SERVER : serverImpl;
+            private set => serverImpl = value;
         }
 
         public string ServerPassword = "";
