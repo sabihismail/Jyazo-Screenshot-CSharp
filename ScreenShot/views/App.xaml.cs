@@ -107,6 +107,8 @@ namespace ScreenShot.views
             {
                 var file = FileUtils.BrowseForFile("Images (*.png)|*.png");
                 
+                if (string.IsNullOrWhiteSpace(file)) return;
+                
                 Upload.UploadFile(file, settings, config);
             });
 
