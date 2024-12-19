@@ -11,7 +11,6 @@ using ScreenShot.src.settings;
 using ScreenShot.src.tools;
 using ScreenShot.src.tools.display;
 using ScreenShot.src.tools.util;
-using ScreenShot.views;
 using static ScreenShot.src.tools.util.URLUtils;
 
 namespace ScreenShot.src.upload
@@ -37,7 +36,7 @@ namespace ScreenShot.src.upload
 
             Application.Current.Dispatcher.Invoke(() =>
             {
-                Clipboard.SetText(result);
+                Clipboard.SetDataObject(result);
 
                 try
                 {

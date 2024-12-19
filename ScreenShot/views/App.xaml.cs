@@ -105,7 +105,7 @@ namespace ScreenShot.views
 
             var menuUploadImageManually = new ToolStripMenuItem("Upload Image", null, (_, _) =>
             {
-                var file = FileUtils.BrowseForFile("Images (*.png)|*.png");
+                var file = FileUtils.BrowseForFile("Images (*.png;*.jpg;*.jpeg;*.gif)|*.png;*.jpg;*.jpeg;*.gif");
                 
                 if (string.IsNullOrWhiteSpace(file)) return;
                 
