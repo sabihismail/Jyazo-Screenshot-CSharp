@@ -66,8 +66,13 @@ namespace ScreenShot.src.settings
             try
             {
                 var settingsFile = Constants.SETTINGS_FILE;
-                Directory.CreateDirectory(Path.GetDirectoryName(settingsFile) ?? throw new InvalidOperationException("settingsFile null"));
-                
+                var directory = Path.GetDirectoryName(settingsFile);
+
+                if (string.IsNullOrEmpty(directory))
+                    throw new InvalidOperationException("Settings file path is invalid");
+
+                Directory.CreateDirectory(directory);
+
                 var imageKeys = KeysToString(imageShortcutKeys);
                 var gifKeys = KeysToString(gifShortcutKeys);
 
@@ -94,9 +99,21 @@ namespace ScreenShot.src.settings
 
                 File.WriteAllText(settingsFile, JToken.Parse(jsonStr).ToString());
             }
-            catch (IOException e)
+            catch (UnauthorizedAccessException uaEx)
             {
-                Logging.Log(e);
+                Logging.Log("Cannot save settings - access denied to settings folder", uaEx);
+            }
+            catch (IOException ioEx)
+            {
+                Logging.Log("Cannot save settings - file I/O error", ioEx);
+            }
+            catch (JsonException jsonEx)
+            {
+                Logging.Log("Cannot save settings - JSON serialization error", jsonEx);
+            }
+            catch (Exception ex)
+            {
+                Logging.Log($"Unexpected error saving settings: {ex.GetType().Name}", ex);
             }
         }
         
@@ -135,18 +152,53 @@ namespace ScreenShot.src.settings
                 CaptureGIFShortcut = !string.IsNullOrWhiteSpace(configContainer.GifKeys) ? configContainer.GifKeys : "";
                 CaptureGIFShortcutKeys = !string.IsNullOrWhiteSpace(configContainer.GifKeys) ? StringToKeys(configContainer.GifKeys) : new List<Key>();
             }
-            catch (Exception)
+            catch (FileNotFoundException)
+            {
+                Logging.Log("Settings file not found. Using default values.");
+            }
+            catch (UnauthorizedAccessException uaEx)
+            {
+                Logging.Log("Cannot read settings file - access denied", uaEx);
+            }
+            catch (IOException ioEx)
+            {
+                Logging.Log("Settings file I/O error - deleting corrupted file", ioEx);
+                TryDeleteCorruptedSettingsFile(settingsFile);
+                RecreateDefaultSettings();
+            }
+            catch (JsonException jsonEx)
+            {
+                Logging.Log("Settings file is corrupted (invalid JSON) - deleting file", jsonEx);
+                TryDeleteCorruptedSettingsFile(settingsFile);
+                RecreateDefaultSettings();
+            }
+            catch (Exception ex)
+            {
+                Logging.Log($"Unexpected error reading settings: {ex.GetType().Name}", ex);
+                TryDeleteCorruptedSettingsFile(settingsFile);
+                RecreateDefaultSettings();
+            }
+        }
+
+        private void TryDeleteCorruptedSettingsFile(string settingsFile)
+        {
+            try
             {
                 if (File.Exists(settingsFile))
                 {
                     File.Delete(settingsFile);
                 }
-
-                Logging.Log("Settings file is corrupted. File deleted and will be set to default values.");
-
-                SaveSettings(EnableFullscreenCapture, EnableGIF, SaveAllImages, SaveDirectory, EnableImageShortcut, CaptureImageShortcutKeys, EnableGIFShortcut, 
-                    CaptureGIFShortcutKeys, EnablePrintScreen, EnableSound);
             }
+            catch (Exception ex)
+            {
+                Logging.Log("Could not delete corrupted settings file", ex);
+            }
+        }
+
+        private void RecreateDefaultSettings()
+        {
+            SaveSettings(EnableFullscreenCapture, EnableGIF, SaveAllImages, SaveDirectory, EnableImageShortcut,
+                CaptureImageShortcutKeys, EnableGIFShortcut, CaptureGIFShortcutKeys, EnablePrintScreen, EnableSound);
         }
 
         private static List<Key> StringToKeys(string text)
