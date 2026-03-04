@@ -43,60 +43,60 @@ namespace ScreenShot.src.tools.gpu
         /// <summary>
         ///     The GDI transparent
         /// </summary>
-        private static Color gdiTransparent = Color.Transparent;
+        private static Color GdiTransparent = Color.Transparent;
 
         /// <summary>
         ///     The transparent
         /// </summary>
-        private static readonly RawColor4 TRANSPARENT = new RawColor4(gdiTransparent.R, gdiTransparent.G, gdiTransparent.B,
-            gdiTransparent.A);
+        private static readonly RawColor4 Transparent = new RawColor4(GdiTransparent.R, GdiTransparent.G, GdiTransparent.B,
+            GdiTransparent.A);
 
         //direct x vars
         /// <summary>
         ///     The device
         /// </summary>
-        private readonly WindowRenderTarget device;
+        private readonly WindowRenderTarget _device;
 
         /// <summary>
         ///     The factory
         /// </summary>
-        private readonly SharpDX.Direct2D1.Factory factory;
+        private readonly SharpDX.Direct2D1.Factory _factory;
 
         /// <summary>
         ///     The font factory
         /// </summary>
-        private readonly Factory fontFactory;
+        private readonly Factory _fontFactory;
 
         /// <summary>
         ///     The brush container
         /// </summary>
-        private List<SolidColorBrush> brushContainer = new List<SolidColorBrush>(32);
+        private List<SolidColorBrush> __brushContainer = new List<SolidColorBrush>(32);
 
         //thread safe resizing
         /// <summary>
         ///     The do resize
         /// </summary>
-        private bool doResize;
+        private bool __doResize;
 
         /// <summary>
         ///     The font container
         /// </summary>
-        private List<TextFormat> fontContainer = new List<TextFormat>(32);
+        private List<TextFormat> __fontContainer = new List<TextFormat>(32);
 
         /// <summary>
         ///     The layout container
         /// </summary>
-        private List<TextLayoutBuffer> layoutContainer = new List<TextLayoutBuffer>(32);
+        private List<TextLayoutBuffer> __layoutContainer = new List<TextLayoutBuffer>(32);
 
         /// <summary>
         ///     The resize x
         /// </summary>
-        private int resizeX;
+        private int __resizeX;
 
         /// <summary>
         ///     The resize y
         /// </summary>
-        private int resizeY;
+        private int __resizeY;
 
         /// <summary>
         ///     Initializes a new instance of the <see cref="Direct2DRenderer" /> class.
@@ -104,9 +104,9 @@ namespace ScreenShot.src.tools.gpu
         /// <param name="hwnd">The HWND.</param>
         /// <param name="limitFps">if set to <c>true</c> [limit FPS].</param>
         public Direct2DRenderer(IntPtr hwnd, bool limitFps) {
-            factory = new SharpDX.Direct2D1.Factory();
+            _factory = new SharpDX.Direct2D1.Factory();
 
-            fontFactory = new Factory();
+            _fontFactory = new Factory();
 
             NativeUtils.GetWindowRect(hwnd, out var bounds);
 
@@ -120,7 +120,7 @@ namespace ScreenShot.src.tools.gpu
                 new PixelFormat(Format.B8G8R8A8_UNorm, AlphaMode.Premultiplied), 0, 0, RenderTargetUsage.None,
                 FeatureLevel.Level_DEFAULT);
 
-            device = new WindowRenderTarget(factory, prop, targetProperties) {
+            _device = new WindowRenderTarget(factory, prop, targetProperties) {
                 TextAntialiasMode = TextAntialiasMode.Aliased,
                 AntialiasMode = AntialiasMode.Aliased
             };
@@ -134,13 +134,13 @@ namespace ScreenShot.src.tools.gpu
             DeleteFontContainer();
             DeleteLayoutContainer();
 
-            brushContainer = null;
-            fontContainer = null;
-            layoutContainer = null;
+            _brushContainer = null;
+            _fontContainer = null;
+            _layoutContainer = null;
 
-            fontFactory.Dispose();
-            factory.Dispose();
-            device.Dispose();
+            _fontFactory.Dispose();
+            _factory.Dispose();
+            _device.Dispose();
         }
 
         /// <summary>
@@ -150,42 +150,42 @@ namespace ScreenShot.src.tools.gpu
         /// <param name="y">Height</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void AutoResize(int x, int y) {
-            doResize = true;
-            resizeX = x;
-            resizeY = y;
+            _doResize = true;
+            _resizeX = x;
+            _resizeY = y;
         }
 
         /// <summary>
         ///     Call this after EndScene if you created brushes within a loop
         /// </summary>
         public void DeleteBrushContainer() {
-            BufferBrushSize = brushContainer.Count;
-            foreach (var solidColorBrush in brushContainer) {
+            BufferBrushSize = _brushContainer.Count;
+            foreach (var solidColorBrush in _brushContainer) {
                 solidColorBrush.Dispose();
             }
-            brushContainer = new List<SolidColorBrush>(BufferBrushSize);
+            _brushContainer = new List<SolidColorBrush>(BufferBrushSize);
         }
 
         /// <summary>
         ///     Call this after EndScene if you created fonts within a loop
         /// </summary>
         public void DeleteFontContainer() {
-            BufferFontSize = fontContainer.Count;
-            foreach (var textFormat in fontContainer) {
+            BufferFontSize = _fontContainer.Count;
+            foreach (var textFormat in _fontContainer) {
                 textFormat.Dispose();
             }
-            fontContainer = new List<TextFormat>(BufferFontSize);
+            _fontContainer = new List<TextFormat>(BufferFontSize);
         }
 
         /// <summary>
         ///     Call this after EndScene if you changed your text's font or have problems with huge memory usage
         /// </summary>
         public void DeleteLayoutContainer() {
-            BufferLayoutSize = layoutContainer.Count;
-            foreach (var layoutBuffer in layoutContainer) {
+            BufferLayoutSize = _layoutContainer.Count;
+            foreach (var layoutBuffer in _layoutContainer) {
                 layoutBuffer.Dispose();
             }
-            layoutContainer = new List<TextLayoutBuffer>(BufferLayoutSize);
+            _layoutContainer = new List<TextLayoutBuffer>(BufferLayoutSize);
         }
 
         /// <summary>
@@ -196,9 +196,9 @@ namespace ScreenShot.src.tools.gpu
         ///     int Brush identifier
         /// </returns>
         public int CreateBrush(int color) {
-            brushContainer.Add(new SolidColorBrush(device,
+            _brushContainer.Add(new SolidColorBrush(device,
                 new RawColor4((color >> 16) & 255L, (color >> 8) & 255L, (byte) color & 255L, (color >> 24) & 255L)));
-            return brushContainer.Count - 1;
+            return _brushContainer.Count - 1;
         }
 
         /// <summary>
@@ -213,8 +213,8 @@ namespace ScreenShot.src.tools.gpu
                 color = Color.FromArgb(255, color);
             }
 
-            brushContainer.Add(new SolidColorBrush(device, new RawColor4(color.R, color.G, color.B, color.A / 255.0f)));
-            return brushContainer.Count - 1;
+            _brushContainer.Add(new SolidColorBrush(device, new RawColor4(color.R, color.G, color.B, color.A / 255.0f)));
+            return _brushContainer.Count - 1;
         }
 
         /// <summary>
@@ -226,41 +226,41 @@ namespace ScreenShot.src.tools.gpu
         /// <param name="italic">print italic text</param>
         /// <returns></returns>
         public int CreateFont(string fontFamilyName, float size, bool bold = false, bool italic = false) {
-            fontContainer.Add(new TextFormat(fontFactory, fontFamilyName, bold ? FontWeight.Bold : FontWeight.Normal,
+            _fontContainer.Add(new TextFormat(fontFactory, fontFamilyName, bold ? FontWeight.Bold : FontWeight.Normal,
                 italic ? FontStyle.Italic : FontStyle.Normal, size));
-            return fontContainer.Count - 1;
+            return _fontContainer.Count - 1;
         }
 
         /// <summary>
         ///     Do your drawing after this
         /// </summary>
         public void BeginScene() {
-            if (doResize) {
-                device.Resize(new Size2(resizeX, resizeY));
+            if (_doResize) {
+                _device.Resize(new Size2(_resizeX, _resizeY));
 
-                doResize = false;
+                _doResize = false;
             }
-            device.BeginDraw();
+            _device.BeginDraw();
         }
 
         /// <summary>
         ///     Present frame. Do not draw after this.
         /// </summary>
         public void EndScene() {
-            device.EndDraw();
-            if (!doResize) {
+            _device.EndDraw();
+            if (!_doResize) {
                 return;
             }
-            device.Resize(new Size2(resizeX, resizeY));
+            _device.Resize(new Size2(_resizeX, _resizeY));
 
-            doResize = false;
+            _doResize = false;
         }
 
         /// <summary>
         ///     Clears the frame
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void ClearScene() => device.Clear(TRANSPARENT);
+        public void ClearScene() => _device.Clear(Transparent);
 
         /// <summary>
         ///     Draws the line.
@@ -272,7 +272,7 @@ namespace ScreenShot.src.tools.gpu
         /// <param name="stroke">The stroke.</param>
         /// <param name="brush">The brush.</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void DrawLine(int startX, int startY, int endX, int endY, float stroke, int brush) => device.DrawLine(new RawVector2(startX, startY), new RawVector2(endX, endY), brushContainer[brush], stroke);
+        public void DrawLine(int startX, int startY, int endX, int endY, float stroke, int brush) => _device.DrawLine(new RawVector2(startX, startY), new RawVector2(endX, endY), _brushContainer[brush], stroke);
 
         /// <summary>
         ///     Draws the rectangle.
@@ -284,7 +284,7 @@ namespace ScreenShot.src.tools.gpu
         /// <param name="stroke">The stroke.</param>
         /// <param name="brush">The brush.</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void DrawRectangle(int x, int y, int width, int height, float stroke, int brush) => device.DrawRectangle(new RawRectangleF(x, y, x + width, y + height), brushContainer[brush], stroke);
+        public void DrawRectangle(int x, int y, int width, int height, float stroke, int brush) => _device.DrawRectangle(new RawRectangleF(x, y, x + width, y + height), _brushContainer[brush], stroke);
 
         /// <summary>
         ///     Draws the circle.
@@ -295,7 +295,7 @@ namespace ScreenShot.src.tools.gpu
         /// <param name="stroke">The stroke.</param>
         /// <param name="brush">The brush.</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void DrawCircle(int x, int y, int radius, float stroke, int brush) => device.DrawEllipse(new Ellipse(new RawVector2(x, y), radius, radius), brushContainer[brush], stroke);
+        public void DrawCircle(int x, int y, int radius, float stroke, int brush) => _device.DrawEllipse(new Ellipse(new RawVector2(x, y), radius, radius), _brushContainer[brush], stroke);
 
         /// <summary>
         ///     Draws the box2 d.
@@ -308,9 +308,9 @@ namespace ScreenShot.src.tools.gpu
         /// <param name="brush">The brush.</param>
         /// <param name="interiorBrush">The interior brush.</param>
         public void DrawBox2D(int x, int y, int width, int height, float stroke, int brush, int interiorBrush) {
-            device.DrawRectangle(new RawRectangleF(x, y, x + width, y + height), brushContainer[brush], stroke);
-            device.FillRectangle(new RawRectangleF(x + stroke, y + stroke, x + width - stroke, y + height - stroke),
-                brushContainer[interiorBrush]);
+            _device.DrawRectangle(new RawRectangleF(x, y, x + width, y + height), _brushContainer[brush], stroke);
+            _device.FillRectangle(new RawRectangleF(x + stroke, y + stroke, x + width - stroke, y + height - stroke),
+                _brushContainer[interiorBrush]);
         }
 
         /// <summary>
@@ -332,28 +332,28 @@ namespace ScreenShot.src.tools.gpu
             var lineStart = new RawVector2(x, y);
             var lineEnd = new RawVector2(second.Left, second.Top);
 
-            device.DrawRectangle(first, brushContainer[brush], stroke);
-            device.DrawRectangle(second, brushContainer[brush], stroke);
+            _device.DrawRectangle(first, _brushContainer[brush], stroke);
+            _device.DrawRectangle(second, _brushContainer[brush], stroke);
 
-            device.FillRectangle(first, brushContainer[interiorBrush]);
-            device.FillRectangle(second, brushContainer[interiorBrush]);
+            _device.FillRectangle(first, _brushContainer[interiorBrush]);
+            _device.FillRectangle(second, _brushContainer[interiorBrush]);
 
-            device.DrawLine(lineStart, lineEnd, brushContainer[brush], stroke);
+            _device.DrawLine(lineStart, lineEnd, _brushContainer[brush], stroke);
 
             lineStart.X += width;
             lineEnd.X = lineStart.X + length;
 
-            device.DrawLine(lineStart, lineEnd, brushContainer[brush], stroke);
+            _device.DrawLine(lineStart, lineEnd, _brushContainer[brush], stroke);
 
             lineStart.Y += height;
             lineEnd.Y += height;
 
-            device.DrawLine(lineStart, lineEnd, brushContainer[brush], stroke);
+            _device.DrawLine(lineStart, lineEnd, _brushContainer[brush], stroke);
 
             lineStart.X -= width;
             lineEnd.X -= width;
 
-            device.DrawLine(lineStart, lineEnd, brushContainer[brush], stroke);
+            _device.DrawLine(lineStart, lineEnd, _brushContainer[brush], stroke);
         }
 
         /// <summary>
@@ -373,25 +373,25 @@ namespace ScreenShot.src.tools.gpu
             var lineStart = new RawVector2(x, y);
             var lineEnd = new RawVector2(second.Left, second.Top);
 
-            device.DrawRectangle(first, brushContainer[brush], stroke);
-            device.DrawRectangle(second, brushContainer[brush], stroke);
+            _device.DrawRectangle(first, _brushContainer[brush], stroke);
+            _device.DrawRectangle(second, _brushContainer[brush], stroke);
 
-            device.DrawLine(lineStart, lineEnd, brushContainer[brush], stroke);
+            _device.DrawLine(lineStart, lineEnd, _brushContainer[brush], stroke);
 
             lineStart.X += width;
             lineEnd.X = lineStart.X + length;
 
-            device.DrawLine(lineStart, lineEnd, brushContainer[brush], stroke);
+            _device.DrawLine(lineStart, lineEnd, _brushContainer[brush], stroke);
 
             lineStart.Y += height;
             lineEnd.Y += height;
 
-            device.DrawLine(lineStart, lineEnd, brushContainer[brush], stroke);
+            _device.DrawLine(lineStart, lineEnd, _brushContainer[brush], stroke);
 
             lineStart.X -= width;
             lineEnd.X -= width;
 
-            device.DrawLine(lineStart, lineEnd, brushContainer[brush], stroke);
+            _device.DrawLine(lineStart, lineEnd, _brushContainer[brush], stroke);
         }
 
         /// <summary>
@@ -409,8 +409,8 @@ namespace ScreenShot.src.tools.gpu
             var third = new RawVector2(x, y - length);
             var fourth = new RawVector2(x, y + length);
 
-            device.DrawLine(first, second, brushContainer[brush], stroke);
-            device.DrawLine(third, fourth, brushContainer[brush], stroke);
+            _device.DrawLine(first, second, _brushContainer[brush], stroke);
+            _device.DrawLine(third, fourth, _brushContainer[brush], stroke);
         }
 
         /// <summary>
@@ -429,16 +429,16 @@ namespace ScreenShot.src.tools.gpu
             var second = new RawVector2(x, y + length);
             var third = new RawVector2(x + length, y);
 
-            device.DrawLine(first, second, brushContainer[brush], stroke);
-            device.DrawLine(first, third, brushContainer[brush], stroke);
+            _device.DrawLine(first, second, _brushContainer[brush], stroke);
+            _device.DrawLine(first, third, _brushContainer[brush], stroke);
 
             first.Y += height;
             second.Y = first.Y - length;
             third.Y = first.Y;
             third.X = first.X + length;
 
-            device.DrawLine(first, second, brushContainer[brush], stroke);
-            device.DrawLine(first, third, brushContainer[brush], stroke);
+            _device.DrawLine(first, second, _brushContainer[brush], stroke);
+            _device.DrawLine(first, third, _brushContainer[brush], stroke);
 
             first.X = x + width;
             first.Y = y;
@@ -447,8 +447,8 @@ namespace ScreenShot.src.tools.gpu
             third.X = first.X;
             third.Y = first.Y + length;
 
-            device.DrawLine(first, second, brushContainer[brush], stroke);
-            device.DrawLine(first, third, brushContainer[brush], stroke);
+            _device.DrawLine(first, second, _brushContainer[brush], stroke);
+            _device.DrawLine(first, third, _brushContainer[brush], stroke);
 
             first.Y += height;
             second.X += length;
@@ -456,8 +456,8 @@ namespace ScreenShot.src.tools.gpu
             third.Y = first.Y;
             third.X = first.X - length;
 
-            device.DrawLine(first, second, brushContainer[brush], stroke);
-            device.DrawLine(first, third, brushContainer[brush], stroke);
+            _device.DrawLine(first, second, _brushContainer[brush], stroke);
+            _device.DrawLine(first, third, _brushContainer[brush], stroke);
         }
 
         /// <summary>
@@ -475,7 +475,7 @@ namespace ScreenShot.src.tools.gpu
             int interiorBrush) {
             var first = new RawRectangleF(x, y, x + width, y + height);
 
-            device.DrawRectangle(first, brushContainer[brush], stroke);
+            _device.DrawRectangle(first, _brushContainer[brush], stroke);
 
             if (Math.Abs(value) < 0) {
                 return;
@@ -483,7 +483,7 @@ namespace ScreenShot.src.tools.gpu
 
             first.Top += height - height / 100.0f * value;
 
-            device.FillRectangle(first, brushContainer[interiorBrush]);
+            _device.FillRectangle(first, _brushContainer[interiorBrush]);
         }
 
         /// <summary>
@@ -501,7 +501,7 @@ namespace ScreenShot.src.tools.gpu
             int interiorBrush) {
             var first = new RawRectangleF(x, y, x + width, y + height);
 
-            device.DrawRectangle(first, brushContainer[brush], stroke);
+            _device.DrawRectangle(first, _brushContainer[brush], stroke);
 
             if (Math.Abs(value) < 0) {
                 return;
@@ -509,7 +509,7 @@ namespace ScreenShot.src.tools.gpu
 
             first.Right -= width - width / 100.0f * value;
 
-            device.FillRectangle(first, brushContainer[interiorBrush]);
+            _device.FillRectangle(first, _brushContainer[interiorBrush]);
         }
 
         /// <summary>
@@ -521,7 +521,7 @@ namespace ScreenShot.src.tools.gpu
         /// <param name="height">The height.</param>
         /// <param name="brush">The brush.</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void FillRectangle(int x, int y, int width, int height, int brush) => device.FillRectangle(new RawRectangleF(x, y, x + width, y + height), brushContainer[brush]);
+        public void FillRectangle(int x, int y, int width, int height, int brush) => _device.FillRectangle(new RawRectangleF(x, y, x + width, y + height), _brushContainer[brush]);
 
         /// <summary>
         ///     Fills the circle.
@@ -531,7 +531,7 @@ namespace ScreenShot.src.tools.gpu
         /// <param name="radius">The radius.</param>
         /// <param name="brush">The brush.</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void FillCircle(int x, int y, int radius, int brush) => device.FillEllipse(new Ellipse(new RawVector2(x, y), radius, radius), brushContainer[brush]);
+        public void FillCircle(int x, int y, int radius, int brush) => _device.FillEllipse(new Ellipse(new RawVector2(x, y), radius, radius), _brushContainer[brush]);
 
         /// <summary>
         ///     Bordereds the line.
@@ -544,17 +544,17 @@ namespace ScreenShot.src.tools.gpu
         /// <param name="brush">The brush.</param>
         /// <param name="borderBrush">The border brush.</param>
         public void BorderedLine(int startX, int startY, int endX, int endY, float stroke, int brush, int borderBrush) {
-            device.DrawLine(new RawVector2(startX, startY), new RawVector2(endX, endY), brushContainer[brush], stroke);
+            _device.DrawLine(new RawVector2(startX, startY), new RawVector2(endX, endY), _brushContainer[brush], stroke);
 
-            device.DrawLine(new RawVector2(startX, startY - stroke), new RawVector2(endX, endY - stroke),
-                brushContainer[borderBrush], stroke);
-            device.DrawLine(new RawVector2(startX, startY + stroke), new RawVector2(endX, endY + stroke),
-                brushContainer[borderBrush], stroke);
+            _device.DrawLine(new RawVector2(startX, startY - stroke), new RawVector2(endX, endY - stroke),
+                _brushContainer[borderBrush], stroke);
+            _device.DrawLine(new RawVector2(startX, startY + stroke), new RawVector2(endX, endY + stroke),
+                _brushContainer[borderBrush], stroke);
 
-            device.DrawLine(new RawVector2(startX - stroke / 2, startY - stroke * 1.5f),
-                new RawVector2(startX - stroke / 2, startY + stroke * 1.5f), brushContainer[borderBrush], stroke);
-            device.DrawLine(new RawVector2(endX - stroke / 2, endY - stroke * 1.5f),
-                new RawVector2(endX - stroke / 2, endY + stroke * 1.5f), brushContainer[borderBrush], stroke);
+            _device.DrawLine(new RawVector2(startX - stroke / 2, startY - stroke * 1.5f),
+                new RawVector2(startX - stroke / 2, startY + stroke * 1.5f), _brushContainer[borderBrush], stroke);
+            _device.DrawLine(new RawVector2(endX - stroke / 2, endY - stroke * 1.5f),
+                new RawVector2(endX - stroke / 2, endY + stroke * 1.5f), _brushContainer[borderBrush], stroke);
         }
 
         /// <summary>
@@ -570,16 +570,16 @@ namespace ScreenShot.src.tools.gpu
         /// <param name="borderBrush">The border brush.</param>
         public void BorderedRectangle(int x, int y, int width, int height, float stroke, float borderStroke, int brush,
             int borderBrush) {
-            device.DrawRectangle(
+            _device.DrawRectangle(
                 new RawRectangleF(x - (stroke - borderStroke), y - (stroke - borderStroke),
-                    x + width + stroke - borderStroke, y + height + stroke - borderStroke), brushContainer[borderBrush],
+                    x + width + stroke - borderStroke, y + height + stroke - borderStroke), _brushContainer[borderBrush],
                 borderStroke);
 
-            device.DrawRectangle(new RawRectangleF(x, y, x + width, y + height), brushContainer[brush], stroke);
+            _device.DrawRectangle(new RawRectangleF(x, y, x + width, y + height), _brushContainer[brush], stroke);
 
-            device.DrawRectangle(
+            _device.DrawRectangle(
                 new RawRectangleF(x + (stroke - borderStroke), y + (stroke - borderStroke),
-                    x + width - stroke + borderStroke, y + height - stroke + borderStroke), brushContainer[borderBrush],
+                    x + width - stroke + borderStroke, y + height - stroke + borderStroke), _brushContainer[borderBrush],
                 borderStroke);
         }
 
@@ -593,13 +593,13 @@ namespace ScreenShot.src.tools.gpu
         /// <param name="brush">The brush.</param>
         /// <param name="borderBrush">The border brush.</param>
         public void BorderedCircle(int x, int y, int radius, float stroke, int brush, int borderBrush) {
-            device.DrawEllipse(new Ellipse(new RawVector2(x, y), radius + stroke, radius + stroke),
-                brushContainer[borderBrush], stroke);
+            _device.DrawEllipse(new Ellipse(new RawVector2(x, y), radius + stroke, radius + stroke),
+                _brushContainer[borderBrush], stroke);
 
-            device.DrawEllipse(new Ellipse(new RawVector2(x, y), radius, radius), brushContainer[brush], stroke);
+            _device.DrawEllipse(new Ellipse(new RawVector2(x, y), radius, radius), _brushContainer[brush], stroke);
 
-            device.DrawEllipse(new Ellipse(new RawVector2(x, y), radius - stroke, radius - stroke),
-                brushContainer[borderBrush], stroke);
+            _device.DrawEllipse(new Ellipse(new RawVector2(x, y), radius - stroke, radius - stroke),
+                _brushContainer[borderBrush], stroke);
         }
 
         /// <summary>
@@ -615,8 +615,8 @@ namespace ScreenShot.src.tools.gpu
             if (bufferText) {
                 var bufferPos = -1;
 
-                for (var i = 0; i < layoutContainer.Count; i++) {
-                    if (layoutContainer[i].Text.Length != text.Length || layoutContainer[i].Text != text) {
+                for (var i = 0; i < _layoutContainer.Count; i++) {
+                    if (_layoutContainer[i].Text.Length != text.Length || _layoutContainer[i].Text != text) {
                         continue;
                     }
                     bufferPos = i;
@@ -624,17 +624,17 @@ namespace ScreenShot.src.tools.gpu
                 }
 
                 if (bufferPos == -1) {
-                    layoutContainer.Add(new TextLayoutBuffer(text,
-                        new TextLayout(fontFactory, text, fontContainer[font], float.MaxValue, float.MaxValue)));
-                    bufferPos = layoutContainer.Count - 1;
+                    _layoutContainer.Add(new TextLayoutBuffer(text,
+                        new TextLayout(fontFactory, text, _fontContainer[font], float.MaxValue, float.MaxValue)));
+                    bufferPos = _layoutContainer.Count - 1;
                 }
 
-                device.DrawTextLayout(new RawVector2(x, y), layoutContainer[bufferPos].TextLayout,
-                    brushContainer[brush], DrawTextOptions.NoSnap);
+                _device.DrawTextLayout(new RawVector2(x, y), _layoutContainer[bufferPos].TextLayout,
+                    _brushContainer[brush], DrawTextOptions.NoSnap);
             }
             else {
-                var layout = new TextLayout(fontFactory, text, fontContainer[font], float.MaxValue, float.MaxValue);
-                device.DrawTextLayout(new RawVector2(x, y), layout, brushContainer[brush]);
+                var layout = new TextLayout(fontFactory, text, _fontContainer[font], float.MaxValue, float.MaxValue);
+                _device.DrawTextLayout(new RawVector2(x, y), layout, _brushContainer[brush]);
                 layout.Dispose();
             }
         }
