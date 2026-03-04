@@ -8,6 +8,11 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using ScreenShot.src.tools;
 
+namespace System.Runtime.CompilerServices
+{
+    internal static class IsExternalInit { }
+}
+
 namespace ScreenShot.src.settings
 {
     public record SettingsData(

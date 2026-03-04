@@ -196,12 +196,6 @@
     </Resource>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Capture\Capture.csproj">
-      <Project>{23178a3d-2ac0-419a-b1b6-59ca45191270}</Project>
-      <Name>Capture</Name>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
     <Folder Include="src\deprecated\tools\" />
     <Folder Include="src\deprecated\views\" />
   </ItemGroup>
