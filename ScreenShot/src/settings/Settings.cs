@@ -10,6 +10,18 @@ using ScreenShot.src.tools;
 
 namespace ScreenShot.src.settings
 {
+    public record SettingsData(
+        bool EnableFullscreenCapture,
+        bool EnableGIF,
+        bool SaveAllImages,
+        string SaveDirectory,
+        bool EnableImageShortcut,
+        List<Key> ImageShortcutKeys,
+        bool EnableGIFShortcut,
+        List<Key> GifShortcutKeys,
+        bool EnablePrintScreen,
+        bool EnableSound);
+
     public class Settings
     {
         public bool EnableFullscreenCapture = true;
@@ -44,24 +56,24 @@ namespace ScreenShot.src.settings
             }
             else
             {
-                SaveSettings(EnableFullscreenCapture, EnableGIF, SaveAllImages, SaveDirectory, EnableImageShortcut, CaptureImageShortcutKeys, EnableGIFShortcut,
-                    CaptureGIFShortcutKeys, EnablePrintScreen, EnableSound);
+                SaveSettings(new SettingsData(
+                    EnableFullscreenCapture, EnableGIF, SaveAllImages, SaveDirectory, EnableImageShortcut,
+                    CaptureImageShortcutKeys, EnableGIFShortcut, CaptureGIFShortcutKeys, EnablePrintScreen, EnableSound));
             }
         }
 
-        public void SaveSettings(bool enableFullscreenCapture, bool enableGIF, bool saveAllImages, string saveDirectory, bool enableImageShortcut, List<Key> imageShortcutKeys,
-            bool enableGIFShortcut, List<Key> gifShortcutKeys, bool enablePrintScreen, bool enableSound)
+        public void SaveSettings(SettingsData data)
         {
-            EnableFullscreenCapture = enableFullscreenCapture;
-            EnableGIF = enableGIF;
-            SaveAllImages = saveAllImages;
-            SaveDirectory = string.IsNullOrWhiteSpace(saveDirectory) ? Constants.DEFAULT_ALL_IMAGES_FOLDER : saveDirectory;
-            EnableImageShortcut = enableImageShortcut;
-            EnableGIFShortcut = enableGIFShortcut;
-            CaptureImageShortcutKeys = imageShortcutKeys;
-            CaptureGIFShortcutKeys = gifShortcutKeys;
-            EnablePrintScreen = enablePrintScreen;
-            EnableSound = enableSound;
+            EnableFullscreenCapture = data.EnableFullscreenCapture;
+            EnableGIF = data.EnableGIF;
+            SaveAllImages = data.SaveAllImages;
+            SaveDirectory = string.IsNullOrWhiteSpace(data.SaveDirectory) ? Constants.DEFAULT_ALL_IMAGES_FOLDER : data.SaveDirectory;
+            EnableImageShortcut = data.EnableImageShortcut;
+            EnableGIFShortcut = data.EnableGIFShortcut;
+            CaptureImageShortcutKeys = data.ImageShortcutKeys;
+            CaptureGIFShortcutKeys = data.GifShortcutKeys;
+            EnablePrintScreen = data.EnablePrintScreen;
+            EnableSound = data.EnableSound;
 
             try
             {
@@ -73,24 +85,23 @@ namespace ScreenShot.src.settings
 
                 Directory.CreateDirectory(directory);
 
-                var imageKeys = KeysToString(imageShortcutKeys);
-                var gifKeys = KeysToString(gifShortcutKeys);
+                var imageKeys = KeysToString(data.ImageShortcutKeys);
+                var gifKeys = KeysToString(data.GifShortcutKeys);
 
-                if (string.IsNullOrWhiteSpace(saveDirectory))
-                {
-                    saveDirectory = SaveDirectory;
-                }
+                var effectiveSaveDirectory = string.IsNullOrWhiteSpace(data.SaveDirectory)
+                    ? SaveDirectory
+                    : data.SaveDirectory;
 
                 var settingsContainer = new SettingsContainer
                 {
-                    EnableFullscreenCapture = enableFullscreenCapture,
-                    EnableGIF = enableGIF,
-                    SaveAllImages = saveAllImages,
-                    EnablePrintScreen = enablePrintScreen,
-                    EnableSound = enableSound,
-                    SaveDirectory = saveDirectory,
-                    EnableImageShortcut = enableImageShortcut,
-                    EnableGIFShortcut = enableGIFShortcut,
+                    EnableFullscreenCapture = data.EnableFullscreenCapture,
+                    EnableGIF = data.EnableGIF,
+                    SaveAllImages = data.SaveAllImages,
+                    EnablePrintScreen = data.EnablePrintScreen,
+                    EnableSound = data.EnableSound,
+                    SaveDirectory = effectiveSaveDirectory,
+                    EnableImageShortcut = data.EnableImageShortcut,
+                    EnableGIFShortcut = data.EnableGIFShortcut,
                     ImageKeys = imageKeys,
                     GifKeys = gifKeys
                 };
@@ -197,8 +208,9 @@ namespace ScreenShot.src.settings
 
         private void RecreateDefaultSettings()
         {
-            SaveSettings(EnableFullscreenCapture, EnableGIF, SaveAllImages, SaveDirectory, EnableImageShortcut,
-                CaptureImageShortcutKeys, EnableGIFShortcut, CaptureGIFShortcutKeys, EnablePrintScreen, EnableSound);
+            SaveSettings(new SettingsData(
+                EnableFullscreenCapture, EnableGIF, SaveAllImages, SaveDirectory, EnableImageShortcut,
+                CaptureImageShortcutKeys, EnableGIFShortcut, CaptureGIFShortcutKeys, EnablePrintScreen, EnableSound));
         }
 
         private static List<Key> StringToKeys(string text)

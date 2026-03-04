@@ -194,7 +194,8 @@ namespace ScreenShot.views.windows
 
         private void BtnSave_OnClick(object sender, RoutedEventArgs e)
         {
-            settings.SaveSettings(IsChecked(ChkEnableFullscreenCapture),
+            var settingsData = new SettingsData(
+                IsChecked(ChkEnableFullscreenCapture),
                 IsChecked(ChkEnableGIFCapture),
                 IsChecked(ChkAutomaticallySaveCapturedImagesToDisk),
                 TxtSaveAllCapturedImages.Text.Trim(),
@@ -204,6 +205,8 @@ namespace ScreenShot.views.windows
                 gifShortcutKeycodes,
                 IsChecked(ChkEnablePrintScreen),
                 IsChecked(ChkPlaySound));
+
+            settings.SaveSettings(settingsData);
 
             Close();
         }
