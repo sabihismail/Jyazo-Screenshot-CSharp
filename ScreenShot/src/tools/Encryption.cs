@@ -10,7 +10,7 @@ namespace ScreenShot.src.tools
     // Retrieved and Modified from https://stackoverflow.com/a/10366194/10887184
     public static class Encryption
     {
-        private const string PASSWORD = "";
+        private static readonly string PASSWORD = LoadOrGeneratePassword();
 
         private const int BLOCK_BIT_SIZE = 128;
         private const int KEY_BIT_SIZE = 128;
@@ -325,6 +325,53 @@ namespace ScreenShot.src.tools
             }
 
             return SimpleDecrypt(encryptedMessage, cryptKey, authKey, cryptSalt.Length + authSalt.Length + nonSecretPayloadLength);
+        }
+
+        private static string LoadOrGeneratePassword()
+        {
+            var configPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "Jyazo",
+                "encryption.key");
+
+            if (File.Exists(configPath))
+            {
+                try
+                {
+                    byte[] encryptedData = File.ReadAllBytes(configPath);
+                    byte[] decryptedData = ProtectedData.Unprotect(encryptedData, null, DataProtectionScope.CurrentUser);
+                    return Encoding.UTF8.GetString(decryptedData);
+                }
+                catch
+                {
+                    // If decryption fails (e.g., user profile changed), generate new key
+                    return GenerateAndStoreNewKey(configPath);
+                }
+            }
+
+            return GenerateAndStoreNewKey(configPath);
+        }
+
+        private static string GenerateAndStoreNewKey(string configPath)
+        {
+            var key = GenerateRandomPassword(32);
+            Directory.CreateDirectory(Path.GetDirectoryName(configPath)!);
+
+            byte[] dataToEncrypt = Encoding.UTF8.GetBytes(key);
+            byte[] encryptedData = ProtectedData.Protect(dataToEncrypt, null, DataProtectionScope.CurrentUser);
+            File.WriteAllBytes(configPath, encryptedData);
+
+            return key;
+        }
+
+        private static string GenerateRandomPassword(int length)
+        {
+            using (var rng = new RNGCryptoServiceProvider())
+            {
+                byte[] tokenData = new byte[length];
+                rng.GetBytes(tokenData);
+                return Convert.ToBase64String(tokenData).Substring(0, length);
+            }
         }
     }
 }
