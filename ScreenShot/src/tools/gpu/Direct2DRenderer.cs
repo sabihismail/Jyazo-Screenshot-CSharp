@@ -4,12 +4,10 @@ using System.Runtime.CompilerServices;
 using ScreenShot.src.tools.util;
 using SharpDX;
 using SharpDX.Direct2D1;
-using SharpDX.DirectWrite;
 using SharpDX.DXGI;
 using SharpDX.Mathematics.Interop;
 using AlphaMode = SharpDX.Direct2D1.AlphaMode;
 using Color = System.Drawing.Color;
-using Factory = SharpDX.DirectWrite.Factory;
 using TextAntialiasMode = SharpDX.Direct2D1.TextAntialiasMode;
 
 namespace ScreenShot.src.tools.gpu
@@ -63,40 +61,25 @@ namespace ScreenShot.src.tools.gpu
         private readonly SharpDX.Direct2D1.Factory _factory;
 
         /// <summary>
-        ///     The font factory
-        /// </summary>
-        private readonly Factory _fontFactory;
-
-        /// <summary>
         ///     The brush container
         /// </summary>
-        private List<SolidColorBrush> __brushContainer = new List<SolidColorBrush>(32);
+        private List<SolidColorBrush> _brushContainer = new List<SolidColorBrush>(32);
 
         //thread safe resizing
         /// <summary>
         ///     The do resize
         /// </summary>
-        private bool __doResize;
-
-        /// <summary>
-        ///     The font container
-        /// </summary>
-        private List<TextFormat> __fontContainer = new List<TextFormat>(32);
-
-        /// <summary>
-        ///     The layout container
-        /// </summary>
-        private List<TextLayoutBuffer> __layoutContainer = new List<TextLayoutBuffer>(32);
+        private bool _doResize;
 
         /// <summary>
         ///     The resize x
         /// </summary>
-        private int __resizeX;
+        private int _resizeX;
 
         /// <summary>
         ///     The resize y
         /// </summary>
-        private int __resizeY;
+        private int _resizeY;
 
         /// <summary>
         ///     Initializes a new instance of the <see cref="Direct2DRenderer" /> class.
@@ -105,8 +88,6 @@ namespace ScreenShot.src.tools.gpu
         /// <param name="limitFps">if set to <c>true</c> [limit FPS].</param>
         public Direct2DRenderer(IntPtr hwnd, bool limitFps) {
             _factory = new SharpDX.Direct2D1.Factory();
-
-            _fontFactory = new Factory();
 
             NativeUtils.GetWindowRect(hwnd, out var bounds);
 
@@ -120,7 +101,7 @@ namespace ScreenShot.src.tools.gpu
                 new PixelFormat(Format.B8G8R8A8_UNorm, AlphaMode.Premultiplied), 0, 0, RenderTargetUsage.None,
                 FeatureLevel.Level_DEFAULT);
 
-            _device = new WindowRenderTarget(factory, prop, targetProperties) {
+            _device = new WindowRenderTarget(_factory, prop, targetProperties) {
                 TextAntialiasMode = TextAntialiasMode.Aliased,
                 AntialiasMode = AntialiasMode.Aliased
             };
@@ -131,14 +112,9 @@ namespace ScreenShot.src.tools.gpu
         /// </summary>
         public void Dispose() {
             DeleteBrushContainer();
-            DeleteFontContainer();
-            DeleteLayoutContainer();
 
             _brushContainer = null;
-            _fontContainer = null;
-            _layoutContainer = null;
 
-            _fontFactory.Dispose();
             _factory.Dispose();
             _device.Dispose();
         }
@@ -167,28 +143,6 @@ namespace ScreenShot.src.tools.gpu
         }
 
         /// <summary>
-        ///     Call this after EndScene if you created fonts within a loop
-        /// </summary>
-        public void DeleteFontContainer() {
-            BufferFontSize = _fontContainer.Count;
-            foreach (var textFormat in _fontContainer) {
-                textFormat.Dispose();
-            }
-            _fontContainer = new List<TextFormat>(BufferFontSize);
-        }
-
-        /// <summary>
-        ///     Call this after EndScene if you changed your text's font or have problems with huge memory usage
-        /// </summary>
-        public void DeleteLayoutContainer() {
-            BufferLayoutSize = _layoutContainer.Count;
-            foreach (var layoutBuffer in _layoutContainer) {
-                layoutBuffer.Dispose();
-            }
-            _layoutContainer = new List<TextLayoutBuffer>(BufferLayoutSize);
-        }
-
-        /// <summary>
         ///     Creates a new SolidColorBrush
         /// </summary>
         /// <param name="color">0x7FFFFFF Premultiplied alpha color</param>
@@ -196,7 +150,7 @@ namespace ScreenShot.src.tools.gpu
         ///     int Brush identifier
         /// </returns>
         public int CreateBrush(int color) {
-            _brushContainer.Add(new SolidColorBrush(device,
+            _brushContainer.Add(new SolidColorBrush(_device,
                 new RawColor4((color >> 16) & 255L, (color >> 8) & 255L, (byte) color & 255L, (color >> 24) & 255L)));
             return _brushContainer.Count - 1;
         }
@@ -213,22 +167,15 @@ namespace ScreenShot.src.tools.gpu
                 color = Color.FromArgb(255, color);
             }
 
-            _brushContainer.Add(new SolidColorBrush(device, new RawColor4(color.R, color.G, color.B, color.A / 255.0f)));
+            _brushContainer.Add(new SolidColorBrush(_device, new RawColor4(color.R, color.G, color.B, color.A / 255.0f)));
             return _brushContainer.Count - 1;
         }
 
         /// <summary>
-        ///     Creates a new Font
+        ///     Creates a new Font (stub - DirectWrite not available)
         /// </summary>
-        /// <param name="fontFamilyName">i.e. Arial</param>
-        /// <param name="size">size in units</param>
-        /// <param name="bold">print bold text</param>
-        /// <param name="italic">print italic text</param>
-        /// <returns></returns>
         public int CreateFont(string fontFamilyName, float size, bool bold = false, bool italic = false) {
-            _fontContainer.Add(new TextFormat(fontFactory, fontFamilyName, bold ? FontWeight.Bold : FontWeight.Normal,
-                italic ? FontStyle.Italic : FontStyle.Normal, size));
-            return _fontContainer.Count - 1;
+            return 0; // Stub - DirectWrite removed due to NuGet availability
         }
 
         /// <summary>
@@ -602,73 +549,5 @@ namespace ScreenShot.src.tools.gpu
                 _brushContainer[borderBrush], stroke);
         }
 
-        /// <summary>
-        ///     Do not buffer text if you draw i.e. FPS. Use buffer for player names, rank....
-        /// </summary>
-        /// <param name="text">The text.</param>
-        /// <param name="font">The font.</param>
-        /// <param name="brush">The brush.</param>
-        /// <param name="x">The x.</param>
-        /// <param name="y">The y.</param>
-        /// <param name="bufferText">if set to <c>true</c> [buffer text].</param>
-        public void DrawText(string text, int font, int brush, int x, int y, bool bufferText = true) {
-            if (bufferText) {
-                var bufferPos = -1;
-
-                for (var i = 0; i < _layoutContainer.Count; i++) {
-                    if (_layoutContainer[i].Text.Length != text.Length || _layoutContainer[i].Text != text) {
-                        continue;
-                    }
-                    bufferPos = i;
-                    break;
-                }
-
-                if (bufferPos == -1) {
-                    _layoutContainer.Add(new TextLayoutBuffer(text,
-                        new TextLayout(fontFactory, text, _fontContainer[font], float.MaxValue, float.MaxValue)));
-                    bufferPos = _layoutContainer.Count - 1;
-                }
-
-                _device.DrawTextLayout(new RawVector2(x, y), _layoutContainer[bufferPos].TextLayout,
-                    _brushContainer[brush], DrawTextOptions.NoSnap);
-            }
-            else {
-                var layout = new TextLayout(fontFactory, text, _fontContainer[font], float.MaxValue, float.MaxValue);
-                _device.DrawTextLayout(new RawVector2(x, y), layout, _brushContainer[brush]);
-                layout.Dispose();
-            }
-        }
-
-        private class TextLayoutBuffer {
-            /// <summary>
-            ///     The text
-            /// </summary>
-            public string Text { get; set; }
-
-            /// <summary>
-            ///     The text layout
-            /// </summary>
-            public TextLayout TextLayout { get; set; }
-
-            /// <summary>
-            ///     Initializes a new instance of the <see cref="TextLayoutBuffer" /> class.
-            /// </summary>
-            /// <param name="text">The text.</param>
-            /// <param name="layout">The layout.</param>
-            public TextLayoutBuffer(string text, TextLayout layout) {
-                Text = text;
-                TextLayout = layout;
-                TextLayout.TextAlignment = TextAlignment.Leading;
-                TextLayout.WordWrapping = WordWrapping.NoWrap;
-            }
-
-            /// <summary>
-            ///     Releases unmanaged and - optionally - managed resources.
-            /// </summary>
-            public void Dispose() {
-                TextLayout.Dispose();
-                Text = null;
-            }
-        }
     }
 }

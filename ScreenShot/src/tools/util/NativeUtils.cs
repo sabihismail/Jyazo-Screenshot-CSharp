@@ -60,21 +60,53 @@ namespace ScreenShot.src.tools.util
 
         [DllImport("user32.dll")]
         public static extern IntPtr GetForegroundWindow();
-        
+
         [DllImport("user32.dll", SetLastError=true)]
         public static extern int GetWindowThreadProcessId(IntPtr hWnd, out int processId);
 
         [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
         public static extern int GetWindowText(IntPtr hWnd, StringBuilder text, int count);
-        
+
         [DllImport("user32.dll")]
         public static extern bool GetCursorPos(out Win32Point pt);
-        
+
         [DllImport("kernel32.dll")]
         public static extern IntPtr GetModuleHandle(string lpModuleName);
-        
+
         [DllImport("shell32.dll")]
         public static extern int SHQueryUserNotificationState(out QueryUserNotificationState pquns);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        public static extern int GetSystemMetrics(int nIndex);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        public static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        public static extern IntPtr CreateWindowEx(int dwExStyle, string lpClassName, string lpWindowName,
+            int dwStyle, int x, int y, int nWidth, int nHeight, IntPtr hWndParent, IntPtr hMenu,
+            IntPtr hInstance, IntPtr lpParam);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        public static extern bool SetLayeredWindowAttributes(IntPtr hwnd, uint crKey, byte bAlpha, uint dwFlags);
+
+        [DllImport("dwmapi.dll", PreserveSig = false)]
+        public static extern void DwmExtendFrameIntoClientArea(IntPtr hWnd, ref RawMargin pMarInset);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool DestroyWindow(IntPtr hwnd);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool PrintWindow(IntPtr hwnd, IntPtr hdcBlt, uint nFlags);
 
         [StructLayout(LayoutKind.Sequential)]
         public readonly struct Win32Point
@@ -82,7 +114,28 @@ namespace ScreenShot.src.tools.util
             public readonly int X;
             public readonly int Y;
         }
-        
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct RECT
+        {
+            public int Left;
+            public int Top;
+            public int Right;
+            public int Bottom;
+
+            public int Width => Right - Left;
+            public int Height => Bottom - Top;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct RawMargin
+        {
+            public int CxLeftWidth;
+            public int CxRightWidth;
+            public int CyTopHeight;
+            public int CyBottomHeight;
+        }
+
         public enum QueryUserNotificationState
         {
             QUNS_NOT_PRESENT = 1,

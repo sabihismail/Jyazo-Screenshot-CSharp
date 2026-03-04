@@ -35,8 +35,8 @@ namespace ScreenShot.views.windows
             ChkEnableImageShortcut.IsChecked = settings.EnableImageShortcut;
             ChkEnableGIFShortcut.IsChecked = settings.EnableGIFShortcut;
 
-            imageShortcutKeycodes = settings.CaptureImageShortcutKeys;
-            gifShortcutKeycodes = settings.CaptureGIFShortcutKeys;
+            imageShortcutKeycodes = settings.CaptureImageShortcutKeys.ToList();
+            gifShortcutKeycodes = settings.CaptureGIFShortcutKeys.ToList();
 
             UpdateShortcutText(imageShortcutKeycodes, TxtImageShortcut);
             UpdateShortcutText(gifShortcutKeycodes, TxtGIFShortcut);

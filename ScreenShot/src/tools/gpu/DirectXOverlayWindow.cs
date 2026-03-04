@@ -231,10 +231,10 @@ namespace ScreenShot.src.tools.gpu
         /// </returns>
         private bool CreateWindow() {
             Handle = NativeUtils.CreateWindowEx(
-                WindowExStyleDx,
+                unchecked((int)WindowExStyleDx),
                 DesktopClass,
                 "",
-                WindowStyleDx,
+                unchecked((int)WindowStyleDx),
                 X,
                 Y,
                 Width,
@@ -248,7 +248,7 @@ namespace ScreenShot.src.tools.gpu
                 return false;
             }
 
-            NativeUtils.SetLayeredWindowAttributes(Handle, 0, 255, LwaAlpha);
+            NativeUtils.SetLayeredWindowAttributes(Handle, 0, 255, (uint)LwaAlpha);
 
             ExtendFrameIntoClient();
 
@@ -276,9 +276,9 @@ namespace ScreenShot.src.tools.gpu
         private void ExtendFrameIntoClient() {
             margin.CxLeftWidth = X;
             margin.CxRightWidth = Width;
-            margin.CyBottomHeight = Height;
             margin.CyTopHeight = Y;
-            
+            margin.CyBottomHeight = Height;
+
             NativeUtils.DwmExtendFrameIntoClientArea(Handle, ref margin);
         }
 
@@ -291,7 +291,7 @@ namespace ScreenShot.src.tools.gpu
             X = x;
             Y = y;
 
-            NativeUtils.SetWindowPos(Handle, HwndTopmost, X, Y, Width, Height, 0);
+            NativeUtils.SetWindowPos(Handle, new IntPtr(HwndTopmost), X, Y, Width, Height, 0);
 
             ExtendFrameIntoClient();
         }
@@ -305,7 +305,7 @@ namespace ScreenShot.src.tools.gpu
             Width = width;
             Height = height;
 
-            NativeUtils.SetWindowPos(Handle, HwndTopmost, X, Y, Width, Height, 0);
+            NativeUtils.SetWindowPos(Handle, new IntPtr(HwndTopmost), X, Y, Width, Height, 0);
 
             Graphics.AutoResize(Width, Height);
 
@@ -325,7 +325,7 @@ namespace ScreenShot.src.tools.gpu
             Width = width;
             Height = height;
 
-            NativeUtils.SetWindowPos(Handle, HwndTopmost, X, Y, Width, Height, 0);
+            NativeUtils.SetWindowPos(Handle, new IntPtr(HwndTopmost), X, Y, Width, Height, 0);
 
             Graphics?.AutoResize(Width, Height);
 
@@ -340,7 +340,7 @@ namespace ScreenShot.src.tools.gpu
                 return;
             }
 
-            NativeUtils.ShowWindow(Handle, SwShow);
+            NativeUtils.ShowWindow(Handle, (int)SwShow);
             IsVisible = true;
 
             ExtendFrameIntoClient();
@@ -354,7 +354,7 @@ namespace ScreenShot.src.tools.gpu
                 return;
             }
 
-            NativeUtils.ShowWindow(Handle, SwHide);
+            NativeUtils.ShowWindow(Handle, (int)SwHide);
             IsVisible = false;
         }
     }

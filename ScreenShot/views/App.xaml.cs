@@ -7,6 +7,7 @@ using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Threading;
+using System.Windows;
 using System.Windows.Forms;
 using System.Windows.Input;
 using Gma.System.MouseKeyHook;
@@ -73,21 +74,37 @@ namespace ScreenShot.views
             Hook.GlobalEvents().OnCombination(dictionary);
         }
         
-        private void HandleCaptureImageShortcut()
+        private async void HandleCaptureImageShortcut()
         {
+            // Don't capture if settings or config windows are open
+            foreach (var window in System.Windows.Application.Current.Windows)
+            {
+                if (window is SettingsWindow or ConfigWindow)
+                {
+                    return;
+                }
+            }
+
             var windowHistoryItem = WindowHistory.APPLICATION_HISTORY.Last;
-                
+
             if (windowHistoryItem == null) return;
-                    
+
             var hwnd = windowHistoryItem.HWND;
             var isGameWindow = GraphicsUtil.IsFullscreenGameWindow(hwnd);
+
+            // Only use overlay capture for fullscreen games; use regular capture otherwise
             if (isGameWindow == null)
             {
                 TryInstantiateCapture<CaptureImage>();
                 return;
             }
 
-            CaptureScreenDirectX.Capture(hwnd);
+            var bitmap = await CaptureScreenDirectX.Capture(hwnd);
+            if (bitmap != null)
+            {
+                // TODO: Handle the captured bitmap (e.g., save, upload, display)
+                bitmap.Dispose();
+            }
         }
 
         private void TryInstantiateCapture<T>() where T : src.capture.Capture
@@ -171,8 +188,8 @@ namespace ScreenShot.views
                 menuExit
             });
 
-            strip.Items[0].Font = new Font(strip.Items[0].Font, strip.Items[0].Font.Style | FontStyle.Bold);
-            strip.Items[1].Font = new Font(strip.Items[1].Font, strip.Items[1].Font.Style | FontStyle.Bold);
+            strip.Items[0].Font = new Font(strip.Items[0].Font, strip.Items[0].Font.Style | System.Drawing.FontStyle.Bold);
+            strip.Items[1].Font = new Font(strip.Items[1].Font, strip.Items[1].Font.Style | System.Drawing.FontStyle.Bold);
 
             taskbarIcon = new NotifyIcon
             {

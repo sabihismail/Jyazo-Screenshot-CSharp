@@ -1,107 +1,195 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
+#nullable enable
+
+using System;
 using System.Drawing;
-using System.Threading;
-using Capture;
-using Capture.Hook.Common;
-using Capture.Interface;
+using System.Threading.Tasks;
+using System.Windows.Threading;
+using Gma.System.MouseKeyHook;
 using ScreenShot.src.tools.util;
 
 namespace ScreenShot.src.tools.gpu
 {
     public static class CaptureScreenDirectX
     {
-        public static void Capture(IntPtr hwnd, Direct3DVersion direct3DVersion = Direct3DVersion.AUTO_DETECT)
-        {
-            NativeUtils.GetWindowThreadProcessId(hwnd, out var processID);
-            var process = Process.GetProcessById(processID);
-            
-            var captureConfig = new CaptureConfig
-            {
-                Direct3DVersion = direct3DVersion,
-                ShowOverlay = true,
-                CaptureMouseEvents = true,
-                CaptureKeyboardEvents = true
-            };
-            
-            var captureInterface = new CaptureInterface();
-            captureInterface.RemoteMessage += e =>
-            {
-                Debug.WriteLine(e.Message);
-            };
+        private static int _startX;
+        private static int _startY;
+        private static int _currentX;
+        private static int _currentY;
+        private static bool _isDragging;
+        private static bool _captureComplete;
+        private static Bitmap? _capturedBitmap;
+        private static DispatcherTimer? _renderTimer;
+        private static DirectXOverlayWindow? _overlay;
+        private static IMouseEvents? _mouseHook;
 
-            captureInterface.Connected += () =>
+        /// <summary>
+        /// Captures a screenshot of the specified window with region selection overlay.
+        /// Uses PrintWindow (PW_RENDERFULLCONTENT) to capture without injection.
+        /// </summary>
+        public static Task<Bitmap?> Capture(IntPtr hwnd)
+        {
+            return Task.Run(() =>
             {
-                captureInterface.DrawOverlayInGame(new Overlay
+                try
                 {
-                    Elements = new List<IOverlayElement>
+                    _captureComplete = false;
+                    _capturedBitmap = null;
+                    _isDragging = false;
+
+                    // Create overlay window over the game
+                    _overlay = new DirectXOverlayWindow(hwnd, limitFps: true);
+
+                    // Create brushes for rendering
+                    var transparentBrush = _overlay.Graphics.CreateBrush(Color.FromArgb(50, 128, 128, 128));
+                    var selectionBrush = _overlay.Graphics.CreateBrush(0x7F00FF00); // Semi-transparent green
+
+                    // Setup mouse hook for input
+                    _mouseHook = Hook.GlobalEvents();
+                    _mouseHook.MouseDown += (_, e) =>
                     {
-                        new RectangleElement
+                        _startX = e.X;
+                        _startY = e.Y;
+                        _isDragging = true;
+                    };
+
+                    _mouseHook.MouseMove += (_, e) =>
+                    {
+                        _currentX = e.X;
+                        _currentY = e.Y;
+                    };
+
+                    _mouseHook.MouseUp += (_, e) =>
+                    {
+                        if (_isDragging)
                         {
-                            Colour = Color.FromArgb(Color.Gray.ToArgb() ^ (0x33 << 24)),
-                            Location = new Point(0, 0),
-                            Width = -1,
-                            Height = -1
-                        },
-                        new RectangleMouseHookElement
-                        {
-                            Colour = Color.FromArgb(Color.Green.ToArgb() ^ (0x33 << 24)),
-                            Width = 0,
-                            Height = 0
-                        },
-                        new FramesPerSecond(new Font("Arial", 16, FontStyle.Bold))
-                        {
-                            Location = new Point(0, 0),
-                            Color = Color.Red,
-                            AntiAliased = true,
-                            Text = "{0:N0} FPS"
+                            _isDragging = false;
+                            // Capture the region using PrintWindow
+                            var region = NormalizeRectangle(_startX, _startY, _currentX, _currentY);
+                            _capturedBitmap = CaptureWindowRegion(hwnd, region);
+                            _captureComplete = true;
                         }
-                    },
-                    Hidden = false
-                });
-            };
-            
-            var captureProcess = new CaptureProcess(process, captureConfig, captureInterface);
-            while (!captureProcess.IsDisposed)
-            {
-                Thread.Sleep(500);
-            }
-            
-            Debug.WriteLine("Disconnected from DirectX Hook");
+                    };
+
+                    // Setup render loop (60 FPS)
+                    _renderTimer = new DispatcherTimer
+                    {
+                        Interval = TimeSpan.FromMilliseconds(1000.0 / 60.0)
+                    };
+
+                    _renderTimer.Tick += (_, _) =>
+                    {
+                        if (!_overlay.IsVisible)
+                            return;
+
+                        // Update overlay position if parent window moved
+                        _overlay.Update();
+
+                        // Render
+                        _overlay.Graphics.BeginScene();
+                        _overlay.Graphics.ClearScene();
+
+                        // Draw semi-transparent overlay background
+                        _overlay.Graphics.FillRectangle(0, 0, _overlay.Width, _overlay.Height, transparentBrush);
+
+                        // Draw selection rectangle if dragging
+                        if (_isDragging)
+                        {
+                            var rect = NormalizeRectangle(_startX, _startY, _currentX, _currentY);
+                            _overlay.Graphics.DrawBox2D(
+                                rect.X, rect.Y, rect.Width, rect.Height,
+                                stroke: 2, brush: selectionBrush, interiorBrush: transparentBrush);
+                        }
+
+                        _overlay.Graphics.EndScene();
+                    };
+
+                    _overlay.Show();
+                    _renderTimer.Start();
+
+                    // Wait for capture to complete
+                    while (!_captureComplete)
+                    {
+                        System.Threading.Thread.Sleep(50);
+                    }
+
+                    _renderTimer.Stop();
+                    _overlay.Dispose();
+
+                    return _capturedBitmap;
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Capture error: {ex}");
+                    _overlay?.Dispose();
+                    return null;
+                }
+            });
         }
-        
-        /*
-        public static void Capture(IntPtr hwnd)
+
+        /// <summary>
+        /// Captures a specific region of a window using PrintWindow.
+        /// PrintWindow with PW_RENDERFULLCONTENT flag works with DX9-12, OpenGL, and Vulkan.
+        /// </summary>
+        private static Bitmap CaptureWindowRegion(IntPtr hwnd, Rectangle region)
         {
-            var test = new DirectXOverlayWindow(hwnd, false);
-            
-            var font = test.Graphics.CreateFont("Arial", 20);
-            var uBrush = test.Graphics.CreateBrush(Color.FromArgb(50, 80, 80, 80));
-            var redBrush = test.Graphics.CreateBrush(0x7FFF0000);
-            
-            var timer = new DispatcherTimer
-            {
-                Interval = TimeSpan.FromMilliseconds(1000 / 144.0),
-            };
+            // First get the full window and crop the region
+            var bitmap = CaptureWindow(hwnd);
+            if (bitmap == null)
+                return new Bitmap(1, 1);
 
-            timer.Tick += (_, _) =>
-            {
-                if (!test.IsVisible) return;
-                test.Update();
-                
-                test.Graphics.BeginScene();
-                test.Graphics.ClearScene();
+            // Ensure region is within bounds
+            var clipped = Rectangle.Intersect(region, new Rectangle(0, 0, bitmap.Width, bitmap.Height));
+            if (clipped.Width <= 0 || clipped.Height <= 0)
+                return bitmap;
 
-                test.Graphics.FillRectangle(0, 0, test.Width, test.Height, uBrush);
-                test.Graphics.DrawText("Test 123", font, redBrush, 0, 0);
-                        
-                test.Graphics.EndScene();
-            };
-            
-            test.Show();
-            timer.Start();
+            // Crop to selected region
+            var cropped = bitmap.Clone(clipped, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            bitmap.Dispose();
+            return cropped;
         }
-        */
+
+        /// <summary>
+        /// Captures the entire window using PrintWindow (PW_RENDERFULLCONTENT).
+        /// This flag forces Windows to ask the target process to render its content.
+        /// Works with any graphics API (DX9-12, OpenGL, Vulkan) without injection.
+        /// </summary>
+        private static Bitmap CaptureWindow(IntPtr hwnd)
+        {
+            NativeUtils.GetWindowRect(hwnd, out var rect);
+            var width = rect.Width;
+            var height = rect.Height;
+
+            if (width <= 0 || height <= 0)
+                return new Bitmap(1, 1);
+
+            var bmp = new Bitmap(width, height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            using var g = Graphics.FromImage(bmp);
+            var dc = g.GetHdc();
+
+            try
+            {
+                const uint PW_RENDERFULLCONTENT = 0x02;
+                NativeUtils.PrintWindow(hwnd, dc, PW_RENDERFULLCONTENT);
+            }
+            finally
+            {
+                g.ReleaseHdc(dc);
+            }
+
+            return bmp;
+        }
+
+        /// <summary>
+        /// Normalizes a rectangle so that x1,y1 is the top-left and x2,y2 is the bottom-right.
+        /// </summary>
+        private static Rectangle NormalizeRectangle(int x1, int y1, int x2, int y2)
+        {
+            var left = Math.Min(x1, x2);
+            var top = Math.Min(y1, y2);
+            var right = Math.Max(x1, x2);
+            var bottom = Math.Max(y1, y2);
+
+            return new Rectangle(left, top, right - left, bottom - top);
+        }
     }
 }
