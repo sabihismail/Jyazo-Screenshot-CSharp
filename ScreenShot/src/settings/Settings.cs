@@ -16,9 +16,9 @@ namespace ScreenShot.src.settings
         bool SaveAllImages,
         string SaveDirectory,
         bool EnableImageShortcut,
-        List<Key> ImageShortcutKeys,
+        IReadOnlyList<Key> ImageShortcutKeys,
         bool EnableGIFShortcut,
-        List<Key> GifShortcutKeys,
+        IReadOnlyList<Key> GifShortcutKeys,
         bool EnablePrintScreen,
         bool EnableSound);
 
@@ -37,13 +37,15 @@ namespace ScreenShot.src.settings
         public bool EnableGIFShortcut;
         
         public string CaptureImageShortcut = Constants.DEFAULT_IMAGE_SHORTCUT;
-        
+
         public string CaptureGIFShortcut = Constants.DEFAULT_GIF_SHORTCUT;
-        
-        public List<Key> CaptureImageShortcutKeys = StringToKeys(Constants.DEFAULT_IMAGE_SHORTCUT);
-        
-        public List<Key> CaptureGIFShortcutKeys = StringToKeys(Constants.DEFAULT_GIF_SHORTCUT);
-        
+
+        private List<Key> _captureImageShortcutKeys = StringToKeys(Constants.DEFAULT_IMAGE_SHORTCUT);
+        private List<Key> _captureGIFShortcutKeys = StringToKeys(Constants.DEFAULT_GIF_SHORTCUT);
+
+        public IReadOnlyList<Key> CaptureImageShortcutKeys => _captureImageShortcutKeys.AsReadOnly();
+        public IReadOnlyList<Key> CaptureGIFShortcutKeys => _captureGIFShortcutKeys.AsReadOnly();
+
         public bool EnablePrintScreen;
 
         public bool EnableSound;
@@ -70,8 +72,8 @@ namespace ScreenShot.src.settings
             SaveDirectory = string.IsNullOrWhiteSpace(data.SaveDirectory) ? Constants.DEFAULT_ALL_IMAGES_FOLDER : data.SaveDirectory;
             EnableImageShortcut = data.EnableImageShortcut;
             EnableGIFShortcut = data.EnableGIFShortcut;
-            CaptureImageShortcutKeys = data.ImageShortcutKeys;
-            CaptureGIFShortcutKeys = data.GifShortcutKeys;
+            _captureImageShortcutKeys = new List<Key>(data.ImageShortcutKeys);
+            _captureGIFShortcutKeys = new List<Key>(data.GifShortcutKeys);
             EnablePrintScreen = data.EnablePrintScreen;
             EnableSound = data.EnableSound;
 
@@ -158,10 +160,10 @@ namespace ScreenShot.src.settings
                 SaveDirectory = !string.IsNullOrWhiteSpace(configContainer.SaveDirectory) ? configContainer.SaveDirectory : "";
                 EnableImageShortcut = configContainer.EnableImageShortcut;
                 CaptureImageShortcut = !string.IsNullOrWhiteSpace(configContainer.ImageKeys) ? configContainer.ImageKeys : "";
-                CaptureImageShortcutKeys = !string.IsNullOrWhiteSpace(configContainer.ImageKeys) ? StringToKeys(configContainer.ImageKeys) : new List<Key>();
+                _captureImageShortcutKeys = !string.IsNullOrWhiteSpace(configContainer.ImageKeys) ? StringToKeys(configContainer.ImageKeys) : new List<Key>();
                 EnableGIFShortcut = configContainer.EnableGIFShortcut;
                 CaptureGIFShortcut = !string.IsNullOrWhiteSpace(configContainer.GifKeys) ? configContainer.GifKeys : "";
-                CaptureGIFShortcutKeys = !string.IsNullOrWhiteSpace(configContainer.GifKeys) ? StringToKeys(configContainer.GifKeys) : new List<Key>();
+                _captureGIFShortcutKeys = !string.IsNullOrWhiteSpace(configContainer.GifKeys) ? StringToKeys(configContainer.GifKeys) : new List<Key>();
             }
             catch (FileNotFoundException)
             {
