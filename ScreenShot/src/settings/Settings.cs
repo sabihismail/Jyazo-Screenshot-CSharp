@@ -7,7 +7,6 @@ using System.Windows.Input;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using ScreenShot.src.tools;
-using ScreenShot.views.windows;
 
 namespace ScreenShot.src.settings
 {
@@ -45,16 +44,9 @@ namespace ScreenShot.src.settings
             }
             else
             {
-                SaveSettings(EnableFullscreenCapture, EnableGIF, SaveAllImages, SaveDirectory, EnableImageShortcut, CaptureImageShortcutKeys, EnableGIFShortcut, 
+                SaveSettings(EnableFullscreenCapture, EnableGIF, SaveAllImages, SaveDirectory, EnableImageShortcut, CaptureImageShortcutKeys, EnableGIFShortcut,
                     CaptureGIFShortcutKeys, EnablePrintScreen, EnableSound);
             }
-
-            if (File.Exists(Constants.CONFIG_FILE)) return;
-
-            Logging.Log($"This must be your first run. Please input your server's image upload host location. An example php host file is located at {Constants.GITHUB}.");
-
-            var settingsWindow = new SettingsWindow(this, new Config());
-            settingsWindow.Show();
         }
 
         public void SaveSettings(bool enableFullscreenCapture, bool enableGIF, bool saveAllImages, string saveDirectory, bool enableImageShortcut, List<Key> imageShortcutKeys,

@@ -39,8 +39,17 @@ namespace ScreenShot.views
 
             ConfigureTaskbar();
             ConfigureShortcuts();
-            
+
             WindowHistory.BeginObservingWindows();
+
+            // Show settings window on first run if config file doesn't exist
+            if (!System.IO.File.Exists(Constants.CONFIG_FILE))
+            {
+                Logging.Log($"This must be your first run. Please input your server's image upload host location. An example php host file is located at {Constants.GITHUB}.");
+
+                var settingsWindow = new SettingsWindow(settings, config);
+                settingsWindow.Show();
+            }
         }
 
         private void ConfigureShortcuts()
