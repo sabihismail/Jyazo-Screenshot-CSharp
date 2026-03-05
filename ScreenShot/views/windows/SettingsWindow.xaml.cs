@@ -26,6 +26,8 @@ namespace ScreenShot.views.windows
 
             InitializeComponent();
 
+            TxtServerEndpoint.Text = config.Server;
+
             ChkEnableFullscreenCapture.IsChecked = settings.EnableFullscreenCapture;
             ChkEnableGIFCapture.IsChecked = settings.EnableGIF;
 
@@ -208,24 +210,10 @@ namespace ScreenShot.views.windows
 
             settings.SaveSettings(settingsData);
 
+            // Save server endpoint to config
+            config.SaveConfig(TxtServerEndpoint.Text.Trim());
+
             Close();
-        }
-
-        private void BtnAdvancedSettings_OnClick(object sender, RoutedEventArgs e)
-        {
-            var configWindow = new ConfigWindow(config);
-
-            configWindow.Closed += (_, _) =>
-            {
-                WindowState = WindowState.Normal;
-            };
-
-            configWindow.Loaded += (_, _) =>
-            {
-                WindowState = WindowState.Minimized;
-            };
-
-            configWindow.Show();
         }
 
         private void BtnCancel_OnClick(object sender, RoutedEventArgs e)

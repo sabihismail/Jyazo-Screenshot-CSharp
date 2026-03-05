@@ -8,6 +8,11 @@
         WindowStartupLocation="CenterScreen">
     <Grid>
         <StackPanel Orientation="Vertical" Margin="10">
+            <StackPanel Orientation="Vertical" Margin="0, 6">
+                <Label Content="Server Endpoint (OAuth2)" FontWeight="Bold"></Label>
+                <TextBox x:Name="TxtServerEndpoint" Margin="0, 2"></TextBox>
+            </StackPanel>
+
             <CheckBox x:Name="ChkEnableFullscreenCapture" Content="Enable Capturing of Fullscreen DirectX/OpenGL/Vulkan Applications (requires enabling shortcuts)" Margin="0, 6"></CheckBox>
             
             <CheckBox x:Name="ChkEnableGIFCapture" Content="Enable GIF Capture"></CheckBox>
@@ -50,7 +55,6 @@
 
             <StackPanel Orientation="Horizontal" Margin="0, 6" HorizontalAlignment="Center">
                 <Button Content="Cancel" Click="BtnCancel_OnClick" Padding="6, 2"></Button>
-                <Button Content="Advanced Settings" Click="BtnAdvancedSettings_OnClick" Margin="10, 0, 0, 0" Padding="6, 2"></Button>
                 <Button Content="Save" Click="BtnSave_OnClick" Margin="10, 0, 0, 0" Padding="6, 2"></Button>
             </StackPanel>
         </StackPanel>
