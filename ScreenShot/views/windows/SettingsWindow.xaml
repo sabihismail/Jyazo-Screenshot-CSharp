@@ -4,12 +4,12 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
-        Title="Jyazo - Settings" Height="380" Width="800"
+        Title="Jyazo - Settings" Height="430" Width="800"
         WindowStartupLocation="CenterScreen">
     <Grid>
         <StackPanel Orientation="Vertical" Margin="10">
-            <StackPanel Orientation="Vertical" Margin="0, 6">
-                <Label Content="Server Endpoint (OAuth2)" FontWeight="Bold"></Label>
+            <StackPanel Orientation="Vertical">
+                <Label Content="Server Endpoint (OAuth2)" Margin="-4, -4"></Label>
                 <TextBox x:Name="TxtServerEndpoint" Margin="0, 2"></TextBox>
             </StackPanel>
 

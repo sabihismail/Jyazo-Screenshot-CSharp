@@ -26,12 +26,7 @@ namespace ScreenShot.src.tools
             SAVE_DIRECTORY + "settings.json";
 #endif
 
-        public static readonly string CONFIG_FILE =
-#if DEBUG
-            Directory.GetCurrentDirectory() + "\\config.json";
-#else
-            SAVE_DIRECTORY + "config.json";
-#endif
+        public static readonly string CONFIG_FILE = SAVE_DIRECTORY + "config.json";
 
         public const string API_ENDPOINT_IS_AUTHORIZED = "api/authenticate";
 

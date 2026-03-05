@@ -77,6 +77,9 @@
     <Reference Include="System.ComponentModel.Composition" />
     <Reference Include="System.ComponentModel.DataAnnotations" />
     <Reference Include="System.Data" />
+    <Reference Include="System.Data.SQLite, Version=1.0.112.1, Culture=neutral, PublicKeyToken=db937bc2d44ff139, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Data.SQLite.Core.1.0.112.2\lib\net40\System.Data.SQLite.dll</HintPath>
+    </Reference>
     <Reference Include="System.Drawing.Common, Version=6.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
       <HintPath>..\packages\System.Drawing.Common.6.0.0\lib\net461\System.Drawing.Common.dll</HintPath>
     </Reference>
@@ -216,6 +219,18 @@
   </ItemGroup>
   <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+
+  <!-- Copy SQLite native interop DLL to output -->
+  <ItemGroup>
+    <SQLiteInteropX86 Include="..\packages\System.Data.SQLite.Core.1.0.112.2\build\net40\x86\SQLite.Interop.dll" />
+    <SQLiteInteropX64 Include="..\packages\System.Data.SQLite.Core.1.0.112.2\build\net40\x64\SQLite.Interop.dll" />
+  </ItemGroup>
+
+  <Target Name="CopySQLiteInterop" AfterTargets="Build">
+    <Copy SourceFiles="@(SQLiteInteropX86)" DestinationFolder="$(OutputPath)x86" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(SQLiteInteropX64)" DestinationFolder="$(OutputPath)x64" SkipUnchangedFiles="true" />
+  </Target>
+
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
       <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>

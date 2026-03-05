@@ -25,7 +25,7 @@ namespace ScreenShot.src.tools.display
                 var buffer = new StringBuilder(MAX_TITLE_LENGTH);
                 var title = NativeUtils.GetWindowText(handle, buffer, MAX_TITLE_LENGTH) > 0 ? buffer.ToString() : null;
 
-                if (string.IsNullOrWhiteSpace(title) || title.Contains("Jyazo") || APPLICATION_HISTORY.Last?.Name == title) return;
+                if (string.IsNullOrWhiteSpace(title) || title.Contains("Jyazo") || title.Contains("127.0.0.1:52805") || APPLICATION_HISTORY.Last?.Name == title) return;
                 
                 var item = new WindowHistoryItem
                 {

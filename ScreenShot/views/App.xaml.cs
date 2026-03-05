@@ -35,7 +35,7 @@ namespace ScreenShot.views
         private NotifyIcon taskbarIcon;
 
         private readonly Settings settings = new();
-        private readonly Config config = new();
+        private Config config;
 
         public App()
         {
@@ -43,15 +43,30 @@ namespace ScreenShot.views
 
             Debug.WriteLine($"[APP] Application starting, dev mode: {isDevMode}");
 
+            try
+            {
+                Debug.WriteLine($"[APP] Initializing Config...");
+                config = new Config();
+                Debug.WriteLine($"[APP] Config initialized successfully");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[APP] ✗ Config initialization failed: {ex.GetType().Name}");
+                Debug.WriteLine($"[APP] Error: {ex.Message}");
+                Debug.WriteLine($"[APP] Stack trace: {ex.StackTrace}");
+                Logging.Log($"Config initialization failed: {ex.Message}");
+                config = null;
+            }
+
             ConfigureTaskbar();
             ConfigureShortcuts();
 
             WindowHistory.BeginObservingWindows();
 
-            // Show settings window on first run if config file doesn't exist
-            if (!System.IO.File.Exists(Constants.CONFIG_FILE))
+            // Show settings window on first run if server is not configured
+            if (string.IsNullOrWhiteSpace(config.Server))
             {
-                Logging.Log($"This must be your first run. Please input your server's image upload host location. An example php host file is located at {Constants.GITHUB}.");
+                Logging.Log($"Server endpoint not configured. Please input your server's image upload host location. An example php host file is located at {Constants.GITHUB}.");
 
                 var settingsWindow = new SettingsWindow(settings, config);
                 settingsWindow.Show();
@@ -430,7 +445,54 @@ namespace ScreenShot.views
                     }
 
                     context.Response.StatusCode = 200;
-                    var buffer = Encoding.UTF8.GetBytes("<html><body>Authentication successful! You can close this window.</body></html>");
+                    context.Response.ContentType = "text/html; charset=utf-8";
+                    var html = @"<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8'>
+    <title>Authentication Successful</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .container {
+            text-align: center;
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        }
+        .checkmark {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #333;
+            margin: 0 0 10px 0;
+            font-size: 24px;
+        }
+        p {
+            color: #666;
+            margin: 10px 0 0 0;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class='container'>
+        <div class='checkmark'>✓</div>
+        <h1>Authentication Successful</h1>
+        <p>You can close this window now.</p>
+    </div>
+</body>
+</html>";
+                    var buffer = Encoding.UTF8.GetBytes(html);
                     context.Response.OutputStream.Write(buffer, 0, buffer.Length);
                     context.Response.OutputStream.Close();
                 }
