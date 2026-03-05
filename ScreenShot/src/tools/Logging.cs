@@ -1,8 +1,8 @@
-﻿#nullable enable
+#nullable enable
 
 using System;
+using System.Diagnostics;
 using System.IO;
-using System.Windows.Forms;
 using ScreenShot.Properties;
 
 namespace ScreenShot.src.tools
@@ -18,19 +18,19 @@ namespace ScreenShot.src.tools
         public static void Log(string text, Exception e)
         {
             LogToFile(text, e);
-            MessageBox.Show("An error occurred. Check the logs for details.", @"Error", MessageBoxButtons.OK);
+            Debug.WriteLine($"[LOG ERROR] {text} - {e.GetType().Name}: {e.Message}");
         }
 
         public static void Log(string text)
         {
             LogToFile(text);
-            MessageBox.Show(text, @"Text", MessageBoxButtons.OK);
+            Debug.WriteLine($"[LOG] {text}");
         }
 
         public static void Log(Exception e)
         {
             LogToFile(e.GetType().Name, e);
-            MessageBox.Show("An error occurred. Check the logs for details.", @"Error", MessageBoxButtons.OK);
+            Debug.WriteLine($"[LOG ERROR] {e.GetType().Name}: {e.Message}");
         }
 
         private static void LogToFile(string message, Exception? exception = null)
