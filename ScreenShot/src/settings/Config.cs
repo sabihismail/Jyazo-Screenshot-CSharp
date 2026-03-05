@@ -1,7 +1,5 @@
 using System;
-using System.Diagnostics.CodeAnalysis;
 using System.IO;
-using System.Net;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using ScreenShot.src.tools;
@@ -19,16 +17,6 @@ namespace ScreenShot.src.settings
             private set => serverImpl = value;
         }
 
-        public string ServerPassword = "";
-
-        public bool EnableGfycatUpload;
-
-        public string GfycatClientID = "";
-
-        public string GfycatClientSecret = "";
-
-        public bool EnableOAuth2 = true;
-
         public string OAuth2Token = "";
 
         public Config()
@@ -41,18 +29,13 @@ namespace ScreenShot.src.settings
             }
             else
             {
-                SaveConfig(Server, ServerPassword, EnableGfycatUpload, GfycatClientID, GfycatClientSecret, EnableOAuth2);
+                SaveConfig(Server);
             }
         }
 
-        public void SaveConfig(string server, string serverPassword, bool enableGfycatUpload, string gfycatClientID, string gfycatClientSecret, bool enableOAuth2)
+        public void SaveConfig(string server)
         {
             Server = server;
-            ServerPassword = serverPassword;
-            EnableGfycatUpload = enableGfycatUpload;
-            GfycatClientID = gfycatClientID;
-            GfycatClientSecret = gfycatClientSecret;
-            EnableOAuth2 = enableOAuth2;
 
             try
             {
@@ -62,16 +45,10 @@ namespace ScreenShot.src.settings
                 var configContainer = new ConfigContainer
                 {
                     Server = !string.IsNullOrWhiteSpace(server) ? Encryption.SimpleEncryptWithPassword(server) : "",
-                    ServerPassword = !string.IsNullOrWhiteSpace(serverPassword) ? Encryption.SimpleEncryptWithPassword(serverPassword) : "",
-                    EnableGfycatUpload = enableGfycatUpload,
-                    GfycatClientID = !string.IsNullOrWhiteSpace(gfycatClientID) ? Encryption.SimpleEncryptWithPassword(gfycatClientID) : "",
-                    GfycatClientSecret = !string.IsNullOrWhiteSpace(gfycatClientSecret) ? Encryption.SimpleEncryptWithPassword(gfycatClientSecret) : "",
-                    EnableOAuth2 = enableOAuth2,
                     OAuth2Token = !string.IsNullOrWhiteSpace(OAuth2Token) ? Encryption.SimpleEncryptWithPassword(OAuth2Token) : ""
                 };
 
                 var jsonStr = JsonConvert.SerializeObject(configContainer);
-
                 File.WriteAllText(configFile, JToken.Parse(jsonStr).ToString());
             }
             catch (Exception e)
@@ -90,21 +67,11 @@ namespace ScreenShot.src.settings
 
                 var configContainer = JsonConvert.DeserializeObject<ConfigContainer>(jsonStr) ?? new ConfigContainer
                 {
-                    EnableGfycatUpload = EnableGfycatUpload,
-                    EnableOAuth2 = EnableOAuth2,
-                    GfycatClientID = GfycatClientID,
-                    GfycatClientSecret = GfycatClientSecret,
-                    OAuth2Token = OAuth2Token,
                     Server = Server,
-                    ServerPassword = ServerPassword
+                    OAuth2Token = OAuth2Token
                 };
 
                 Server = !string.IsNullOrWhiteSpace(configContainer.Server) ? Encryption.SimpleDecryptWithPassword(configContainer.Server) : "";
-                ServerPassword = !string.IsNullOrWhiteSpace(configContainer.ServerPassword) ? Encryption.SimpleDecryptWithPassword(configContainer.ServerPassword) : "";
-                EnableGfycatUpload = configContainer.EnableGfycatUpload;
-                GfycatClientID = !string.IsNullOrWhiteSpace(configContainer.GfycatClientID) ? Encryption.SimpleDecryptWithPassword(configContainer.GfycatClientID) : "";
-                GfycatClientSecret = !string.IsNullOrWhiteSpace(configContainer.GfycatClientSecret) ? Encryption.SimpleDecryptWithPassword(configContainer.GfycatClientSecret) : "";
-                EnableOAuth2 = configContainer.EnableOAuth2;
                 OAuth2Token = !string.IsNullOrWhiteSpace(configContainer.OAuth2Token) ? Encryption.SimpleDecryptWithPassword(configContainer.OAuth2Token) : "";
             }
             catch (Exception e)
@@ -115,30 +82,19 @@ namespace ScreenShot.src.settings
                 }
 
                 Logging.Log("The config file is corrupted! All values have been reset.\nError:" + e.Message);
-
-                SaveConfig(Server, ServerPassword, EnableGfycatUpload, GfycatClientID, GfycatClientSecret, EnableOAuth2);
+                SaveConfig(Server);
             }
         }
 
         public void SetOAuth2Token(string token)
         {
             OAuth2Token = token;
-            SaveConfig(Server, ServerPassword, EnableGfycatUpload, GfycatClientID, GfycatClientSecret, EnableOAuth2);
+            SaveConfig(Server);
         }
 
         private class ConfigContainer
         {
             public string Server { get; set; }
-
-            public string ServerPassword { get; set; }
-
-            public bool EnableGfycatUpload { get; set; }
-
-            public string GfycatClientID { get; set; }
-
-            public string GfycatClientSecret { get; set; }
-
-            public bool EnableOAuth2 { get; set; }
 
             public string OAuth2Token { get; set; }
         }

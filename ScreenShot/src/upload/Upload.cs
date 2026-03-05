@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.IO;
 using System.Media;
@@ -20,12 +20,12 @@ namespace ScreenShot.src.upload
     {
         public static async void UploadFile(string file, Settings settings, Config config)
         {
-            Debug.WriteLine($"[UPLOAD] Starting upload: file={file}, server={config.Server}, oauth2={config.EnableOAuth2}");
+            Debug.WriteLine($"[UPLOAD] Starting upload: file={file}, server={config.Server}");
 
-            if (string.IsNullOrWhiteSpace(config.Server) || !config.EnableOAuth2 && string.IsNullOrWhiteSpace(config.ServerPassword))
+            if (string.IsNullOrWhiteSpace(config.Server))
             {
-                Debug.WriteLine("[UPLOAD] Configuration error: missing server or auth");
-                Logging.Log("Configuration Error: User inputted server url or server password is invalid.");
+                Debug.WriteLine("[UPLOAD] Configuration error: missing server endpoint");
+                Logging.Log("Configuration Error: Server endpoint is not configured.");
                 return;
             }
 
@@ -68,32 +68,18 @@ namespace ScreenShot.src.upload
             streamContent.Headers.Add("Content-Type", FileUtils.GetContentType(Path.GetExtension(file)));
             formData.Add(streamContent, "uploaded_image", Path.GetFileName(file));
 
-            var server = config.Server;
-            if (!config.EnableOAuth2)
+            var server = JoinURL(config.Server, "api/ss");
+            server = JoinURL(server, Constants.API_ENDPOINT_UPLOAD_SCREENSHOT);
+            Debug.WriteLine($"[UPLOAD] Upload endpoint: {server}");
+
+            if (!string.IsNullOrWhiteSpace(config.OAuth2Token))
             {
-                Debug.WriteLine("[UPLOAD] Using password authentication");
-                server = JoinURL(server, "api/ss");
-                if (!string.IsNullOrWhiteSpace(config.ServerPassword))
-                {
-                    formData.Headers.Add("upload_password", config.ServerPassword);
-                    Debug.WriteLine("[UPLOAD] Password header added");
-                }
+                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", config.OAuth2Token);
+                Debug.WriteLine("[UPLOAD] Bearer token added to Authorization header");
             }
             else
             {
-                server = JoinURL(server, "api/ss");
-                server = JoinURL(server, Constants.API_ENDPOINT_UPLOAD_SCREENSHOT);
-                Debug.WriteLine($"[UPLOAD] Using OAuth2 token authentication, endpoint: {server}");
-
-                if (!string.IsNullOrWhiteSpace(config.OAuth2Token))
-                {
-                    client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", config.OAuth2Token);
-                    Debug.WriteLine("[UPLOAD] Bearer token added to Authorization header");
-                }
-                else
-                {
-                    Debug.WriteLine("[UPLOAD] OAuth2 enabled but no token available");
-                }
+                Debug.WriteLine("[UPLOAD] No token available - OAuth2 authentication required");
             }
 
             try
@@ -128,7 +114,7 @@ namespace ScreenShot.src.upload
             catch (Exception e)
             {
                 Debug.WriteLine($"[UPLOAD] Exception: {e}");
-                Logging.Log($"Could not upload screenShot to URL: {server}.\nError: " + e);
+                Logging.Log($"Could not upload screenshot to {server}.\nError: " + e);
             }
 
             return "";
@@ -139,7 +125,7 @@ namespace ScreenShot.src.upload
             Task.Run(() =>
             {
                 using var stream = Application.GetResourceStream(new Uri("/resources/sounds/sound.wav", UriKind.Relative))?.Stream;
-                
+
                 var notificationSound = new SoundPlayer(stream);
                 notificationSound.PlaySync();
             });

@@ -57,7 +57,7 @@ namespace ScreenShot.views
                 settingsWindow.Show();
             }
 
-            Debug.WriteLine($"[APP] Configured server: {config.Server}, OAuth2 enabled: {config.EnableOAuth2}");
+            Debug.WriteLine($"[APP] Configured server: {config.Server}");
         }
 
         private void ConfigureShortcuts()
@@ -95,12 +95,12 @@ namespace ScreenShot.views
         {
             Debug.WriteLine("[SHORTCUT] HandleCaptureImageShortcut triggered");
 
-            // Don't capture if settings or config windows are open
+            // Don't capture if settings window is open
             foreach (var window in System.Windows.Application.Current.Windows)
             {
-                if (window is SettingsWindow or ConfigWindow)
+                if (window is SettingsWindow)
                 {
-                    Debug.WriteLine("[SHORTCUT] Aborting: Settings/Config window is open");
+                    Debug.WriteLine("[SHORTCUT] Aborting: Settings window is open");
                     return;
                 }
             }
@@ -298,13 +298,6 @@ namespace ScreenShot.views
 
         private void CheckOAuth2(Action callback)
         {
-            if (!config.EnableOAuth2)
-            {
-                Debug.WriteLine("[OAUTH] OAuth2 disabled, skipping validation");
-                callback();
-                return;
-            }
-
             Debug.WriteLine("[OAUTH] Checking OAuth2 credentials");
             CheckIfOAuth2CredentialsValid(config, callback);
         }
