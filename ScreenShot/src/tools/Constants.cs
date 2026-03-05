@@ -32,13 +32,29 @@ namespace ScreenShot.src.tools
 #else
             SAVE_DIRECTORY + "config.json";
 #endif
-        
-        public const string API_ENDPOINT_IS_AUTHORIZED = "isAuthorized";
+
+        public const string API_ENDPOINT_IS_AUTHORIZED = "api/authenticate";
 
         public const string API_ENDPOINT_UPLOAD_SCREENSHOT = "uploadScreenShot";
 
         public const string USER_AGENT = $"{CREATOR}/{PROGRAM_NAME}/1.0";
 
-        public const string OVERRIDE_SERVER = "http://localhost:3000/api/ss";
+        public static string OVERRIDE_SERVER => GetDevServer();
+
+        /// <summary>
+        /// Get dev server from environment variable or use default port 3000
+        /// Set DEV_SERVER env var to override, e.g., "http://localhost:3001"
+        /// </summary>
+        private static string GetDevServer()
+        {
+            var envServer = Environment.GetEnvironmentVariable("DEV_SERVER");
+            if (!string.IsNullOrWhiteSpace(envServer))
+            {
+                return envServer;
+            }
+
+            // Default to port 3000 (can be overridden via DEV_SERVER env var)
+            return "http://localhost:3000";
+        }
     }
 }

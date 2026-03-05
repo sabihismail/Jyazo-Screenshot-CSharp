@@ -32,21 +32,26 @@ namespace ScreenShot.src.tools.gpu
             {
                 try
                 {
+                    System.Diagnostics.Debug.WriteLine("[DX] Capture started");
                     _captureComplete = false;
                     _capturedBitmap = null;
                     _isDragging = false;
 
                     // Create overlay window over the game
+                    System.Diagnostics.Debug.WriteLine($"[DX] Creating overlay for hwnd: {hwnd}");
                     _overlay = new DirectXOverlayWindow(hwnd, limitFps: true);
+                    System.Diagnostics.Debug.WriteLine("[DX] Overlay created successfully");
 
                     // Create brushes for rendering
                     var transparentBrush = _overlay.Graphics.CreateBrush(Color.FromArgb(50, 128, 128, 128));
                     var selectionBrush = _overlay.Graphics.CreateBrush(0x7F00FF00); // Semi-transparent green
 
                     // Setup mouse hook for input
+                    System.Diagnostics.Debug.WriteLine("[DX] Setting up mouse hook");
                     _mouseHook = Hook.GlobalEvents();
                     _mouseHook.MouseDown += (_, e) =>
                     {
+                        System.Diagnostics.Debug.WriteLine($"[DX] MouseDown at {e.X}, {e.Y}");
                         _startX = e.X;
                         _startY = e.Y;
                         _isDragging = true;
@@ -54,17 +59,21 @@ namespace ScreenShot.src.tools.gpu
 
                     _mouseHook.MouseMove += (_, e) =>
                     {
+                        if (_isDragging)
+                            System.Diagnostics.Debug.WriteLine($"[DX] MouseMove at {e.X}, {e.Y}");
                         _currentX = e.X;
                         _currentY = e.Y;
                     };
 
                     _mouseHook.MouseUp += (_, e) =>
                     {
+                        System.Diagnostics.Debug.WriteLine($"[DX] MouseUp at {e.X}, {e.Y}");
                         if (_isDragging)
                         {
                             _isDragging = false;
                             // Capture the region using PrintWindow
                             var region = NormalizeRectangle(_startX, _startY, _currentX, _currentY);
+                            System.Diagnostics.Debug.WriteLine($"[DX] Capturing region: {region.X},{region.Y} {region.Width}x{region.Height}");
                             _capturedBitmap = CaptureWindowRegion(hwnd, region);
                             _captureComplete = true;
                         }
@@ -78,43 +87,55 @@ namespace ScreenShot.src.tools.gpu
 
                     _renderTimer.Tick += (_, _) =>
                     {
-                        if (!_overlay.IsVisible)
-                            return;
-
-                        // Update overlay position if parent window moved
-                        _overlay.Update();
-
-                        // Render
-                        _overlay.Graphics.BeginScene();
-                        _overlay.Graphics.ClearScene();
-
-                        // Draw semi-transparent overlay background
-                        _overlay.Graphics.FillRectangle(0, 0, _overlay.Width, _overlay.Height, transparentBrush);
-
-                        // Draw selection rectangle if dragging
-                        if (_isDragging)
+                        try
                         {
-                            var rect = NormalizeRectangle(_startX, _startY, _currentX, _currentY);
-                            _overlay.Graphics.DrawBox2D(
-                                rect.X, rect.Y, rect.Width, rect.Height,
-                                stroke: 2, brush: selectionBrush, interiorBrush: transparentBrush);
-                        }
+                            if (!_overlay.IsVisible)
+                                return;
 
-                        _overlay.Graphics.EndScene();
+                            // Update overlay position if parent window moved
+                            _overlay.Update();
+
+                            // Render
+                            _overlay.Graphics.BeginScene();
+                            _overlay.Graphics.ClearScene();
+
+                            // Draw semi-transparent overlay background
+                            _overlay.Graphics.FillRectangle(0, 0, _overlay.Width, _overlay.Height, transparentBrush);
+
+                            // Draw selection rectangle if dragging
+                            if (_isDragging)
+                            {
+                                var rect = NormalizeRectangle(_startX, _startY, _currentX, _currentY);
+                                _overlay.Graphics.DrawBox2D(
+                                    rect.X, rect.Y, rect.Width, rect.Height,
+                                    stroke: 2, brush: selectionBrush, interiorBrush: transparentBrush);
+                            }
+
+                            _overlay.Graphics.EndScene();
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[DX] Render error: {ex}");
+                            _captureComplete = true;
+                        }
                     };
 
+                    System.Diagnostics.Debug.WriteLine("[DX] Showing overlay and starting render timer");
                     _overlay.Show();
                     _renderTimer.Start();
 
                     // Wait for capture to complete
+                    System.Diagnostics.Debug.WriteLine("[DX] Waiting for capture...");
                     while (!_captureComplete)
                     {
                         System.Threading.Thread.Sleep(50);
                     }
 
+                    System.Diagnostics.Debug.WriteLine("[DX] Capture complete, stopping timer");
                     _renderTimer.Stop();
                     _overlay.Dispose();
 
+                    System.Diagnostics.Debug.WriteLine($"[DX] Returning bitmap: {(_capturedBitmap != null ? "yes" : "null")}");
                     return _capturedBitmap;
                 }
                 catch (Exception ex)
@@ -177,6 +198,47 @@ namespace ScreenShot.src.tools.gpu
             }
 
             return bmp;
+        }
+
+        /// <summary>
+        /// Captures the entire fullscreen window without overlay UI.
+        /// </summary>
+        public static Task<Bitmap?> CaptureFullWindow(IntPtr hwnd)
+        {
+            return Task.Run(() =>
+            {
+                try
+                {
+                    System.Diagnostics.Debug.WriteLine($"[DX] CaptureFullWindow for hwnd: {hwnd}");
+                    var bitmap = CaptureWindow(hwnd);
+                    System.Diagnostics.Debug.WriteLine($"[DX] CaptureFullWindow returned: {(bitmap != null ? "bitmap" : "null")}");
+                    return bitmap;
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[DX] CaptureFullWindow error: {ex}");
+                    return null;
+                }
+            });
+        }
+
+        /// <summary>
+        /// Clears any existing overlay windows and cleans up resources.
+        /// </summary>
+        public static void ClearOverlayWindows()
+        {
+            try
+            {
+                _renderTimer?.Stop();
+                _renderTimer = null;
+                _mouseHook = null;
+                _overlay?.Dispose();
+                _overlay = null;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error clearing overlay: {ex}");
+            }
         }
 
         /// <summary>

@@ -2,15 +2,18 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Forms;
 using System.Windows.Input;
 using Gma.System.MouseKeyHook;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using ScreenShot.src.capture;
 using ScreenShot.src.settings;
@@ -38,6 +41,8 @@ namespace ScreenShot.views
         {
             InitializeComponent();
 
+            Debug.WriteLine($"[APP] Application starting, dev mode: {isDevMode}");
+
             ConfigureTaskbar();
             ConfigureShortcuts();
 
@@ -51,12 +56,21 @@ namespace ScreenShot.views
                 var settingsWindow = new SettingsWindow(settings, config);
                 settingsWindow.Show();
             }
+
+            Debug.WriteLine($"[APP] Configured server: {config.Server}, OAuth2 enabled: {config.EnableOAuth2}");
         }
 
         private void ConfigureShortcuts()
         {
-            if (!settings.CaptureImageShortcutKeys.Any() && !settings.CaptureGIFShortcutKeys.Any()) return;
-            
+            if (!settings.CaptureImageShortcutKeys.Any() && !settings.CaptureGIFShortcutKeys.Any())
+            {
+                Debug.WriteLine("[SHORTCUT] No shortcut keys configured");
+                return;
+            }
+
+            Debug.WriteLine($"[SHORTCUT] Image shortcut keys: {string.Join("+", settings.CaptureImageShortcutKeys)}");
+            Debug.WriteLine($"[SHORTCUT] GIF shortcut keys: {string.Join("+", settings.CaptureGIFShortcutKeys)}");
+
             var imageCombination = WPFKeysToFormsKeyCombination(settings.CaptureImageShortcutKeys);
             var gifCombination = WPFKeysToFormsKeyCombination(settings.CaptureGIFShortcutKeys);
 
@@ -64,47 +78,73 @@ namespace ScreenShot.views
             if (imageCombination != null)
             {
                 dictionary[imageCombination] = HandleCaptureImageShortcut;
+                Debug.WriteLine($"[SHORTCUT] Registered image capture shortcut: {imageCombination}");
             }
-            
+
             if (gifCombination != null)
             {
                 dictionary[gifCombination] = TryInstantiateCapture<CaptureGIF>;
+                Debug.WriteLine($"[SHORTCUT] Registered GIF capture shortcut: {gifCombination}");
             }
-            
+
             Hook.GlobalEvents().OnCombination(dictionary);
+            Debug.WriteLine("[SHORTCUT] Global hook registered");
         }
         
         private async void HandleCaptureImageShortcut()
         {
+            Debug.WriteLine("[SHORTCUT] HandleCaptureImageShortcut triggered");
+
             // Don't capture if settings or config windows are open
             foreach (var window in System.Windows.Application.Current.Windows)
             {
                 if (window is SettingsWindow or ConfigWindow)
                 {
+                    Debug.WriteLine("[SHORTCUT] Aborting: Settings/Config window is open");
                     return;
                 }
             }
 
             var windowHistoryItem = WindowHistory.APPLICATION_HISTORY.Last;
 
-            if (windowHistoryItem == null) return;
-
-            var hwnd = windowHistoryItem.HWND;
-            var isGameWindow = GraphicsUtil.IsFullscreenGameWindow(hwnd);
-
-            // Only use overlay capture for fullscreen games; use regular capture otherwise
-            if (isGameWindow == null)
+            if (windowHistoryItem == null)
             {
-                TryInstantiateCapture<CaptureImage>();
+                Debug.WriteLine("[SHORTCUT] Aborting: No window in history");
                 return;
             }
 
-            var bitmap = await CaptureScreenDirectX.Capture(hwnd);
-            if (bitmap != null)
+            Debug.WriteLine("[SHORTCUT] Proceeding with capture");
+
+            var hwnd = windowHistoryItem.HWND;
+            var isGameWindow = GraphicsUtil.IsFullscreenGameWindow(hwnd);
+            Debug.WriteLine($"[SHORTCUT] IsFullscreenGameWindow: {isGameWindow}");
+
+            // For true exclusive fullscreen games, capture directly
+            if (isGameWindow != null)
             {
-                // TODO: Handle the captured bitmap (e.g., save, upload, display)
-                bitmap.Dispose();
+                Debug.WriteLine("[SHORTCUT] Exclusive fullscreen game detected, capturing entire window");
+                var bitmap = await CaptureScreenDirectX.CaptureFullWindow(hwnd);
+                if (bitmap != null)
+                {
+                    var file = Path.GetTempPath() + DateTimeOffset.Now.ToUnixTimeMilliseconds() + ".png";
+                    bitmap.Save(file, System.Drawing.Imaging.ImageFormat.Png);
+                    bitmap.Dispose();
+
+                    if (settings.SaveAllImages)
+                    {
+                        var output = settings.SaveDirectory + DateTimeOffset.Now.ToUnixTimeMilliseconds() + ".png";
+                        File.Move(file, output);
+                        file = output;
+                    }
+
+                    Upload.UploadFile(file, settings, config);
+                    Debug.WriteLine("[SHORTCUT] Fullscreen capture uploaded");
+                }
+                return;
             }
+
+            Debug.WriteLine("[SHORTCUT] Not exclusive fullscreen, using regular capture UI");
+            TryInstantiateCapture<CaptureImage>();
         }
 
         private void TryInstantiateCapture<T>() where T : src.capture.Capture
@@ -148,6 +188,11 @@ namespace ScreenShot.views
                 Enabled = settings.SaveAllImages
             };
 
+            var menuClearOverlay = new ToolStripMenuItem("Clear Overlay Windows", null, (_, _) =>
+            {
+                CaptureScreenDirectX.ClearOverlayWindows();
+            });
+
             var menuSettings = new ToolStripMenuItem("Settings", null, (_, _) =>
             {
                 var settingsWindow = new SettingsWindow(settings, config);
@@ -181,6 +226,7 @@ namespace ScreenShot.views
                 menuUploadImageManually,
                 new ToolStripSeparator(),
                 menuViewAllImages,
+                menuClearOverlay,
                 menuSettings,
                 new ToolStripSeparator(),
                 menuEnableDevMode,
@@ -246,17 +292,20 @@ namespace ScreenShot.views
 
         private void Application_Exit(object sender, System.Windows.ExitEventArgs e)
         {
+            CaptureScreenDirectX.ClearOverlayWindows();
             taskbarIcon.Dispose();
         }
 
         private void CheckOAuth2(Action callback)
         {
-            if (!config.EnableOAuth2 || isDevMode == 1)
+            if (!config.EnableOAuth2)
             {
+                Debug.WriteLine("[OAUTH] OAuth2 disabled, skipping validation");
                 callback();
                 return;
             }
 
+            Debug.WriteLine("[OAUTH] Checking OAuth2 credentials");
             CheckIfOAuth2CredentialsValid(config, callback);
         }
 
@@ -279,14 +328,27 @@ namespace ScreenShot.views
         // ReSharper disable once UnusedMember.Local
         public static async void CheckIfOAuth2CredentialsValid(Config config, Action callback)
         {
-            var fullURL = JoinURL(config.Server, Constants.API_ENDPOINT_IS_AUTHORIZED);
+            const int OAUTH_CALLBACK_PORT = 52805;
+            var localCallbackUrl = $"http://{IPAddress.Loopback}:{OAUTH_CALLBACK_PORT}/";
 
-            using var client = new CookieHttpClient(config, false);
-            
-            var uri = new Uri(fullURL);
+            // Get base server URL (remove /api/ss if present)
+            var baseServer = config.Server.TrimEnd('/');
+            if (baseServer.EndsWith("/api/ss"))
+            {
+                baseServer = baseServer.Substring(0, baseServer.Length - "/api/ss".Length);
+            }
+
+            var fullURL = JoinURL(baseServer, Constants.API_ENDPOINT_IS_AUTHORIZED);
+            fullURL = $"{fullURL}?redirect_uri={Uri.EscapeDataString(localCallbackUrl)}";
+
+            Debug.WriteLine($"[OAUTH] Checking credentials at: {fullURL}");
+
+            using var handler = new HttpClientHandler { AllowAutoRedirect = false };
+            using var client = new HttpClient(handler);
+
             var request = new HttpRequestMessage
             {
-                RequestUri = uri,
+                RequestUri = new Uri(fullURL),
                 Method = HttpMethod.Get
             };
 
@@ -294,83 +356,103 @@ namespace ScreenShot.views
             try
             {
                 response = await client.SendAsync(request);
+                Debug.WriteLine($"[OAUTH] Response status: {response.StatusCode}");
             }
-            catch
+            catch (Exception ex)
             {
-                Logging.Log("Could not connect to " + request + ". Exiting...");
+                Debug.WriteLine($"[OAUTH] Connection error: {ex.Message}");
+                Logging.Log("Could not connect to authentication endpoint. Exiting...");
                 Current.Shutdown(-1);
-
                 return;
             }
 
             var status = (int)response.StatusCode;
+
+            // Check if already authenticated (cookies received)
             if (response.StatusCode == HttpStatusCode.OK)
             {
+                Debug.WriteLine("[OAUTH] Already authenticated - session cookie set");
+                response.Dispose();
                 Current.Dispatcher.Invoke(callback);
                 return;
             }
 
+            // Check if redirect to OAuth provider needed
             if (status is >= 300 and <= 399)
             {
+                Debug.WriteLine("[OAUTH] Need to authenticate - server redirecting to OAuth");
+                var redirectUri = response.Headers.Location?.ToString();
+                if (string.IsNullOrWhiteSpace(redirectUri))
+                {
+                    Debug.WriteLine("[OAUTH] Redirect but no Location header");
+                    Logging.Log("OAuth redirect without Location header");
+                    response.Dispose();
+                    return;
+                }
+
+                // Convert relative URLs to absolute
+                if (!redirectUri.StartsWith("http://") && !redirectUri.StartsWith("https://"))
+                {
+                    redirectUri = config.Server.TrimEnd('/') + redirectUri;
+                }
+
+                Debug.WriteLine($"[OAUTH] Opening browser to: {redirectUri}");
                 response.Dispose();
 
-                var redirectUrl = $"http://{IPAddress.Loopback}:{GetRandomUnusedPort()}/";
-
+                // Prepare local listener for callback
                 var http = new HttpListener();
-                http.Prefixes.Add(redirectUrl);
+                http.Prefixes.Add(localCallbackUrl);
                 http.Start();
+                Debug.WriteLine($"[OAUTH] Listening for callback at: {localCallbackUrl}");
 
-                var completeURL = $"{fullURL}?redirect_uri={Uri.EscapeDataString(redirectUrl)}";
-
-                Process.Start(completeURL);
-
-                var context = await http.GetContextAsync();
-
-                var contextResponse = context.Response;
-                var baseURL = config.Server.Substring(0, config.Server.IndexOf("/", "https://".Length, StringComparison.Ordinal));
-                var buffer = Encoding.UTF8.GetBytes($"<html><head><meta http-equiv='refresh' content='10;url='{baseURL}'></head><body>Please return to the app.</body></html>");
-                contextResponse.ContentLength64 = buffer.Length;
-                var responseOutput = contextResponse.OutputStream;
-                await responseOutput.WriteAsync(buffer, 0, buffer.Length).ContinueWith(_ =>
+                try
                 {
-                    responseOutput.Close();
+                    Process.Start(redirectUri);
+                    Debug.WriteLine("[OAUTH] Browser opened - user authenticating");
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[OAUTH] Failed to open browser: {ex.Message}");
+                    Logging.Log($"Failed to open browser for OAuth: {ex.Message}");
                     http.Stop();
-                });
-
-                if (context.Request.QueryString.Get("error") != null)
-                {
-                    Logging.Log($"OAuth authorization error: {context.Request.QueryString.Get("error")}");
                     return;
                 }
 
-                if (context.Request.QueryString.Get("cookies") == null)
+                try
                 {
-                    Logging.Log($"Malformed authorization response: {context.Request.QueryString.Get("cookies")}");
-                    return;
+                    var context = await http.GetContextAsync();
+                    Debug.WriteLine($"[OAUTH] ✓ Received callback at local listener");
+
+                    // Extract token from query parameters
+                    var token = context.Request.QueryString["token"];
+                    if (!string.IsNullOrWhiteSpace(token))
+                    {
+                        Debug.WriteLine($"[OAUTH] Extracted token from callback");
+                        config.SetOAuth2Token(token);
+                        Debug.WriteLine($"[OAUTH] Token saved to config");
+                    }
+                    else
+                    {
+                        Debug.WriteLine("[OAUTH] No token in callback URL");
+                    }
+
+                    context.Response.StatusCode = 200;
+                    var buffer = Encoding.UTF8.GetBytes("<html><body>Authentication successful! You can close this window.</body></html>");
+                    context.Response.OutputStream.Write(buffer, 0, buffer.Length);
+                    context.Response.OutputStream.Close();
                 }
-
-                var cookiesStr = Uri.UnescapeDataString(context.Request.QueryString.Get("cookies"));
-                var cookiesDynamic = JObject.Parse(cookiesStr);
-
-                var domain = baseURL.Substring(baseURL.IndexOf("//", StringComparison.InvariantCulture) + "//".Length);
-                if (domain.Contains(":"))
+                finally
                 {
-                    domain = domain.Substring(0, domain.IndexOf(":", StringComparison.InvariantCulture));
+                    http.Stop();
                 }
-                
-                var cookies = new List<Cookie>();
-                foreach (var cookie in cookiesDynamic)
-                {
-                    cookies.Add(new Cookie(cookie.Key, cookie.Value?.ToString(), "/", domain));
-                }
-
-                config.SetOAuth2Cookies(cookies);
 
                 Current.Dispatcher.Invoke(callback);
             }
             else
             {
-                Logging.Log("Unsupported non redirect OAuth2 endpoint.");
+                Debug.WriteLine($"[OAUTH] Unexpected response status: {response.StatusCode}");
+                Logging.Log($"Unexpected OAuth response: {response.StatusCode}");
+                response.Dispose();
                 Current.Shutdown();
             }
         }

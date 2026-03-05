@@ -23,11 +23,12 @@ namespace ScreenShot.src.tools.gpu
 
         public static GraphicsPipeline? IsFullscreenGameWindow(IntPtr hwnd)
         {
-            NativeUtils.GetWindowThreadProcessId(hwnd, out var processID);
-            NativeUtils.SHQueryUserNotificationState(out _);
+            // First check if it's actually exclusive fullscreen (covers entire screen)
+            if (!IsExclusiveFullscreen(hwnd))
+                return null;
 
-            //if (!FULLSCREEN_APPLICATION_MODES.Contains(result)) return null;
-            
+            // Then check if it uses DirectX
+            NativeUtils.GetWindowThreadProcessId(hwnd, out var processID);
             var process = Process.GetProcessById(processID);
             var modules = NativeUtils.CollectModules(process)
                 .Distinct()
@@ -37,6 +38,39 @@ namespace ScreenShot.src.tools.gpu
             var isDirectX = GRAPHICS_MAPPING.Keys.FirstOrDefault(x => modules.Contains(x, StringComparer.InvariantCultureIgnoreCase));
 
             return !string.IsNullOrWhiteSpace(isDirectX) ? GRAPHICS_MAPPING[isDirectX] : null;
+        }
+
+        /// <summary>
+        /// Checks if a window is in exclusive fullscreen mode by verifying it covers the entire monitor.
+        /// </summary>
+        private static bool IsExclusiveFullscreen(IntPtr hwnd)
+        {
+            try
+            {
+                NativeUtils.GetWindowRect(hwnd, out var windowRect);
+
+                // Get the screen dimensions
+                var screenWidth = NativeUtils.GetSystemMetrics(0); // SM_CXSCREEN
+                var screenHeight = NativeUtils.GetSystemMetrics(1); // SM_CYSCREEN
+
+                // Check if window covers the entire screen
+                var coversFullScreen =
+                    windowRect.Left == 0 &&
+                    windowRect.Top == 0 &&
+                    (windowRect.Right - windowRect.Left) == screenWidth &&
+                    (windowRect.Bottom - windowRect.Top) == screenHeight;
+
+                Debug.WriteLine($"[GraphicsUtil] Window bounds: {windowRect.Left},{windowRect.Top} -> {windowRect.Right},{windowRect.Bottom}");
+                Debug.WriteLine($"[GraphicsUtil] Screen size: {screenWidth}x{screenHeight}");
+                Debug.WriteLine($"[GraphicsUtil] Covers full screen: {coversFullScreen}");
+
+                return coversFullScreen;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[GraphicsUtil] Error checking fullscreen: {ex}");
+                return false;
+            }
         }
 
         public enum GraphicsPipeline

@@ -174,14 +174,16 @@ namespace ScreenShot.src.tools.gpu
         ///     or
         ///     Could not create OverlayWindow
         /// </exception>
-        public DirectXOverlayWindow(IntPtr parent, bool limitFps = true) 
+        public DirectXOverlayWindow(IntPtr parent, bool limitFps = true)
         {
-            if (parent == IntPtr.Zero) 
+            System.Diagnostics.Debug.WriteLine($"[OVERLAY] Constructor called with parent={parent}");
+            if (parent == IntPtr.Zero)
             {
                 throw new Exception("The handle of the parent window isn't valid");
             }
 
             NativeUtils.GetWindowRect(parent, out var bounds);
+            System.Diagnostics.Debug.WriteLine($"[OVERLAY] Parent window bounds: {bounds.Left},{bounds.Top} -> {bounds.Right},{bounds.Bottom}");
 
             IsDisposing = false;
             IsVisible = true;
@@ -196,15 +198,21 @@ namespace ScreenShot.src.tools.gpu
             Height = bounds.Bottom - bounds.Top;
 
             ParentWindow = parent;
+            System.Diagnostics.Debug.WriteLine($"[OVERLAY] Creating window at {X},{Y} size {Width}x{Height}");
 
             if (!CreateWindow())
             {
                 throw new Exception("Could not create OverlayWindow");
             }
 
+            System.Diagnostics.Debug.WriteLine($"[OVERLAY] Window created with handle={Handle}");
+            System.Diagnostics.Debug.WriteLine("[OVERLAY] Creating Direct2DRenderer...");
             Graphics = new Direct2DRenderer(Handle, limitFps);
+            System.Diagnostics.Debug.WriteLine("[OVERLAY] Direct2DRenderer created");
 
+            System.Diagnostics.Debug.WriteLine("[OVERLAY] Calling SetBounds");
             SetBounds(X, Y, Width, Height);
+            System.Diagnostics.Debug.WriteLine("[OVERLAY] SetBounds called");
         }
 
         /// <summary>
@@ -320,30 +328,42 @@ namespace ScreenShot.src.tools.gpu
         /// <param name="width">The width.</param>
         /// <param name="height">The height.</param>
         public void SetBounds(int x, int y, int width, int height) {
+            System.Diagnostics.Debug.WriteLine($"[OVERLAY] SetBounds: {x},{y} {width}x{height}");
             X = x;
             Y = y;
             Width = width;
             Height = height;
 
+            System.Diagnostics.Debug.WriteLine("[OVERLAY] Calling SetWindowPos");
             NativeUtils.SetWindowPos(Handle, new IntPtr(HwndTopmost), X, Y, Width, Height, 0);
+            System.Diagnostics.Debug.WriteLine("[OVERLAY] SetWindowPos done");
 
+            System.Diagnostics.Debug.WriteLine("[OVERLAY] Calling AutoResize");
             Graphics?.AutoResize(Width, Height);
+            System.Diagnostics.Debug.WriteLine("[OVERLAY] AutoResize done");
 
+            System.Diagnostics.Debug.WriteLine("[OVERLAY] Calling ExtendFrameIntoClient");
             ExtendFrameIntoClient();
+            System.Diagnostics.Debug.WriteLine("[OVERLAY] ExtendFrameIntoClient done");
         }
 
         /// <summary>
         ///     Shows this instance.
         /// </summary>
         public void Show() {
+            System.Diagnostics.Debug.WriteLine($"[OVERLAY] Show called. IsVisible={IsVisible}, Handle={Handle}");
             if (IsVisible) {
+                System.Diagnostics.Debug.WriteLine("[OVERLAY] Already visible, returning");
                 return;
             }
 
+            System.Diagnostics.Debug.WriteLine($"[OVERLAY] Calling ShowWindow({Handle}, {SwShow})");
             NativeUtils.ShowWindow(Handle, (int)SwShow);
             IsVisible = true;
+            System.Diagnostics.Debug.WriteLine("[OVERLAY] ShowWindow called, calling ExtendFrameIntoClient");
 
             ExtendFrameIntoClient();
+            System.Diagnostics.Debug.WriteLine("[OVERLAY] Show complete");
         }
 
         /// <summary>

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -14,7 +15,7 @@ namespace ScreenShot.views.capture
     public partial class CaptureScreen
     {
         private static readonly IKeyboardMouseEvents MOUSE_HOOK = Hook.GlobalEvents();
-        
+
         public System.Drawing.Rectangle? CapturedArea;
 
         private Rectangle rect;
@@ -26,17 +27,21 @@ namespace ScreenShot.views.capture
         {
             InitializeComponent();
 
+            Debug.WriteLine("[UI] CaptureScreen window created");
+
             Cursor = Cursors.Cross;
 
             MOUSE_HOOK.MouseUpExt += GlobalHookMouseUpExt;
-            
+
             WindowState = WindowState.Maximized;
+            Debug.WriteLine("[UI] CaptureScreen window maximized and ready for selection");
         }
 
         private void GlobalHookMouseUpExt(object sender, MouseEventExtArgs e)
         {
+            Debug.WriteLine($"[UI] GlobalHookMouseUpExt triggered at {e.X},{e.Y}");
             MOUSE_HOOK.MouseUpExt -= GlobalHookMouseUpExt;
-            
+
             Application.Current.Dispatcher.Invoke(Canvas_OnMouseUp);
         }
 
@@ -46,12 +51,14 @@ namespace ScreenShot.views.capture
 
             startX = (int)pos.X;
             startY = (int)pos.Y;
-            
+
+            Debug.WriteLine($"[UI] MouseDown at {startX},{startY}");
+
             rect = new Rectangle
             {
                 Fill = new SolidColorBrush(Color.FromArgb(90, 128, 128, 128))
             };
-            
+
             Canvas.SetLeft(rect, startX);
             Canvas.SetTop(rect, startY);
 
@@ -61,9 +68,10 @@ namespace ScreenShot.views.capture
         private void Canvas_OnMouseMove(object sender, MouseEventArgs e)
         {
             if (rect == null) return;
-            
+
             if (e.LeftButton == MouseButtonState.Released)
             {
+                Debug.WriteLine("[UI] MouseMove detected button released, triggering OnMouseUp");
                 Canvas_OnMouseUp();
             }
 
@@ -85,6 +93,7 @@ namespace ScreenShot.views.capture
         {
             if (rect == null)
             {
+                Debug.WriteLine("[UI] MouseUp with no rect, closing window");
                 Close();
                 return;
             }
@@ -96,6 +105,9 @@ namespace ScreenShot.views.capture
 
             CapturedArea = new System.Drawing.Rectangle(x, y, (int)rect.Width, (int)rect.Height);
 
+            Debug.WriteLine($"[UI] MouseUp: final captured area is {x},{y} {(int)rect.Width}x{(int)rect.Height}");
+            Debug.WriteLine("[UI] Closing CaptureScreen window");
+
             Close();
         }
 
@@ -103,14 +115,20 @@ namespace ScreenShot.views.capture
         {
             if (rect != null)
             {
+                Debug.WriteLine("[UI] Canvas_MouseLeave: selection in progress, ignoring");
                 return;
             }
 
-            if (!NativeUtils.GetCursorPos(out var point)) return;
-            
+            if (!NativeUtils.GetCursorPos(out var point))
+            {
+                Debug.WriteLine("[UI] Canvas_MouseLeave: failed to get cursor position");
+                return;
+            }
+
             var wpfPoint = new Point(point.X, point.Y);
             var screen = WPFScreen.GetScreenFrom(wpfPoint);
-                
+            Debug.WriteLine($"[UI] Canvas_MouseLeave: moving window to screen with cursor at {point.X},{point.Y}");
+
             screen.MoveWindow(this);
         }
 
@@ -118,18 +136,21 @@ namespace ScreenShot.views.capture
         {
             if (e.Key == Key.Escape)
             {
+                Debug.WriteLine("[UI] Escape key pressed, closing window");
                 Close();
             }
         }
 
         private void Window_Deactivated(object sender, EventArgs e)
         {
+            Debug.WriteLine("[UI] Window deactivated, reactivating");
             Topmost = false;
             Topmost = true;
         }
 
         private void Window_OnClosing(object sender, CancelEventArgs e)
         {
+            Debug.WriteLine("[UI] Window closing, cleaning up mouse hook");
             MOUSE_HOOK.MouseUpExt -= GlobalHookMouseUpExt;
         }
     }
