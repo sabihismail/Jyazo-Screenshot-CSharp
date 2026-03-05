@@ -22,7 +22,9 @@ namespace ScreenShot.src.settings
             Path.GetDirectoryName(Constants.CONFIG_FILE) ?? throw new InvalidOperationException("config path null"),
             "config.db");
 
-        private static readonly string DbPassword = "JyazoScreenShot2024";
+        private static readonly string DbPassword = System.Environment.GetEnvironmentVariable("DB_PASSWORD") ?? "JyazoScreenShot2024";
+
+        private SQLiteConnection connection;
 
         public Config()
         {
@@ -39,7 +41,7 @@ namespace ScreenShot.src.settings
                     SQLiteConnection.CreateFile(DbPath);
                 }
 
-                using var connection = new SQLiteConnection($"Data Source={DbPath};Password={DbPassword};");
+                connection = new SQLiteConnection($"Data Source={DbPath};Version=3;Password={DbPassword};PRAGMA journal_mode = WAL;PRAGMA synchronous = NORMAL;");
                 connection.Open();
 
                 using var command = connection.CreateCommand();
@@ -62,9 +64,6 @@ namespace ScreenShot.src.settings
         {
             try
             {
-                using var connection = new SQLiteConnection($"Data Source={DbPath};Password={DbPassword};");
-                connection.Open();
-
                 using var command = connection.CreateCommand();
                 command.CommandText = "SELECT server, oauth2_token FROM config LIMIT 1";
 
@@ -87,9 +86,6 @@ namespace ScreenShot.src.settings
 
             try
             {
-                using var connection = new SQLiteConnection($"Data Source={DbPath};Password={DbPassword};");
-                connection.Open();
-
                 // Check if record exists
                 using var checkCommand = connection.CreateCommand();
                 checkCommand.CommandText = "SELECT COUNT(*) FROM config";
@@ -120,9 +116,6 @@ namespace ScreenShot.src.settings
 
             try
             {
-                using var connection = new SQLiteConnection($"Data Source={DbPath};Password={DbPassword};");
-                connection.Open();
-
                 using var command = connection.CreateCommand();
                 command.CommandText = "UPDATE config SET oauth2_token = @token WHERE id = 1";
                 command.Parameters.AddWithValue("@token", token ?? "");
