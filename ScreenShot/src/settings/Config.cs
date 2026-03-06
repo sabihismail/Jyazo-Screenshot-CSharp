@@ -122,13 +122,11 @@ namespace ScreenShot.src.settings
                     Directory.CreateDirectory(dir);
                 }
 
-                // Delete old database to start fresh with new DPAPI key
-                if (File.Exists(DbPath))
+                // Create database file if it doesn't exist
+                if (!File.Exists(DbPath))
                 {
-                    File.Delete(DbPath);
+                    SQLiteConnection.CreateFile(DbPath);
                 }
-
-                SQLiteConnection.CreateFile(DbPath);
 
                 connection = new SQLiteConnection($"Data Source={DbPath};Version=3;Password={DbPassword};PRAGMA journal_mode = WAL;PRAGMA synchronous = NORMAL;");
                 connection.Open();
