@@ -12,6 +12,7 @@ using ScreenShot.src.settings;
 using ScreenShot.src.tools;
 using ScreenShot.src.tools.display;
 using ScreenShot.src.tools.util;
+using ScreenShot.views;
 using static ScreenShot.src.tools.util.URLUtils;
 
 namespace ScreenShot.src.upload
@@ -55,6 +56,18 @@ namespace ScreenShot.src.upload
 
         private static async Task<string> UploadToServer(string file, Config config)
         {
+            // If no token available, try to authenticate first
+            if (string.IsNullOrWhiteSpace(config.OAuth2Token))
+            {
+                Debug.WriteLine("[UPLOAD] No token available - attempting OAuth2 authentication");
+                var authSuccess = await TryOAuth2Authentication(config);
+                if (!authSuccess)
+                {
+                    Logging.Log("Authentication failed. Cannot upload without valid credentials.");
+                    return "";
+                }
+            }
+
             using var client = new HttpClient();
 
             using var formData = new MultipartFormDataContent();
@@ -79,7 +92,7 @@ namespace ScreenShot.src.upload
             }
             else
             {
-                Debug.WriteLine("[UPLOAD] No token available - OAuth2 authentication required");
+                Debug.WriteLine("[UPLOAD] No token available after authentication attempt");
             }
 
             try
@@ -118,6 +131,42 @@ namespace ScreenShot.src.upload
             }
 
             return "";
+        }
+
+        private static async Task<bool> TryOAuth2Authentication(Config config)
+        {
+            var tcs = new TaskCompletionSource<bool>();
+
+            try
+            {
+                Debug.WriteLine("[UPLOAD] Starting OAuth2 authentication flow");
+
+                // Call App's OAuth2 check with callback
+                App.CheckIfOAuth2CredentialsValid(config, () =>
+                {
+                    Debug.WriteLine("[UPLOAD] OAuth2 authentication callback triggered");
+                    tcs.TrySetResult(true);
+                });
+
+                // Wait for callback with 5 minute timeout
+                var task = tcs.Task;
+                var completedTask = await Task.WhenAny(task, Task.Delay(TimeSpan.FromMinutes(5)));
+
+                if (completedTask == task)
+                {
+                    return await task;
+                }
+                else
+                {
+                    Debug.WriteLine("[UPLOAD] OAuth2 authentication timed out");
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[UPLOAD] OAuth2 authentication error: {ex.Message}");
+                return false;
+            }
         }
 
         private static void PlaySound()

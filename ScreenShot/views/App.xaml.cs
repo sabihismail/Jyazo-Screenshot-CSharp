@@ -337,7 +337,6 @@ namespace ScreenShot.views
         }
 
         // OAuth2 Flow based on https://github.com/googlesamples/oauth-apps-for-windows/blob/master/OAuthDesktopApp/OAuthDesktopApp/MainWindow.xaml.cs
-        // ReSharper disable once UnusedMember.Local
         public static async void CheckIfOAuth2CredentialsValid(Config config, Action callback)
         {
             const int OAUTH_CALLBACK_PORT = 52805;

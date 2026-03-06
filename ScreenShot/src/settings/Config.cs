@@ -12,7 +12,6 @@ namespace ScreenShot.src.settings
     public class Config
     {
         private string serverImpl = "";
-        private TokenManager tokenManager;
 
         public string Server
         {
@@ -22,8 +21,8 @@ namespace ScreenShot.src.settings
 
         public string OAuth2Token
         {
-            get => tokenManager?.GetToken() ?? "";
-            set => tokenManager?.SaveToken(value);
+            get => GetToken();
+            set => SaveToken(value);
         }
 
         private static readonly string DbPath = GetDatabasePath();
@@ -104,8 +103,7 @@ namespace ScreenShot.src.settings
             InitializeDatabase();
             if (connection != null)
             {
-                Debug.WriteLine($"[CONFIG] Connection successful, initializing managers");
-                tokenManager = new TokenManager(connection);
+                Debug.WriteLine($"[CONFIG] Connection successful, loading config");
                 LoadConfig();
             }
             else
@@ -223,14 +221,46 @@ namespace ScreenShot.src.settings
             }
         }
 
-        public string GetTokenForUrl(string url)
+        private string GetToken()
         {
-            return tokenManager?.GetTokenForUrl(url) ?? "";
+            try
+            {
+                if (connection == null)
+                    return "";
+
+                using var command = connection.CreateCommand();
+                command.CommandText = "SELECT oauth2_token FROM config LIMIT 1";
+                var result = command.ExecuteScalar();
+                return result?.ToString() ?? "";
+            }
+            catch (Exception e)
+            {
+                Debug.WriteLine($"[CONFIG] Error retrieving token: {e.Message}");
+                return "";
+            }
         }
 
-        public void SaveTokenForUrl(string url, string token)
+        private void SaveToken(string token)
         {
-            tokenManager?.SaveTokenForUrl(url, token);
+            try
+            {
+                if (connection == null)
+                {
+                    Logging.Log("Config save error: Database not initialized");
+                    return;
+                }
+
+                using var command = connection.CreateCommand();
+                command.CommandText = "UPDATE config SET oauth2_token = @token WHERE id = 1";
+                command.Parameters.AddWithValue("@token", token ?? "");
+                command.ExecuteNonQuery();
+
+                Debug.WriteLine($"[CONFIG] ✓ Token saved");
+            }
+            catch (Exception e)
+            {
+                Logging.Log($"Config save error: {e.Message}");
+            }
         }
     }
 }
