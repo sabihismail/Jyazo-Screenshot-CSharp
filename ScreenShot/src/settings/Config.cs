@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Data.SQLite;
 using System.Diagnostics;
 using System.IO;
@@ -170,6 +171,32 @@ namespace ScreenShot.src.settings
                     );
                 ";
                 createCommand.ExecuteNonQuery();
+
+                // Schema migration: add missing columns if they don't exist
+                try
+                {
+                    using var checkCommand = connection.CreateCommand();
+                    checkCommand.CommandText = "PRAGMA table_info(config)";
+                    using var reader = checkCommand.ExecuteReader();
+                    var columns = new HashSet<string>();
+                    while (reader.Read())
+                    {
+                        columns.Add(reader["name"].ToString());
+                    }
+
+                    // Add token_expires_at column if missing
+                    if (!columns.Contains("token_expires_at"))
+                    {
+                        using var alterCommand = connection.CreateCommand();
+                        alterCommand.CommandText = "ALTER TABLE config ADD COLUMN token_expires_at INTEGER DEFAULT 0";
+                        alterCommand.ExecuteNonQuery();
+                        Debug.WriteLine($"[CONFIG] Added missing token_expires_at column");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[CONFIG] Schema migration warning: {ex.Message}");
+                }
 
                 Debug.WriteLine($"[CONFIG] ✓ Database initialized successfully");
             }
