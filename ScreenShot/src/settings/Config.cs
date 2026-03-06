@@ -25,6 +25,20 @@ namespace ScreenShot.src.settings
             set => SaveToken(value);
         }
 
+        public long TokenExpiresAt
+        {
+            get => GetTokenExpiresAt();
+            set => SaveTokenExpiresAt(value);
+        }
+
+        public bool IsTokenExpired()
+        {
+            var expiresAt = GetTokenExpiresAt();
+            if (expiresAt <= 0) return true; // No expiry info, consider expired
+            var nowUnix = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            return nowUnix >= expiresAt;
+        }
+
         private static readonly string DbPath = GetDatabasePath();
 
         private static string GetDatabasePath()
@@ -136,11 +150,13 @@ namespace ScreenShot.src.settings
                     CREATE TABLE IF NOT EXISTS config (
                         id INTEGER PRIMARY KEY,
                         server TEXT,
-                        oauth2_token TEXT
+                        oauth2_token TEXT,
+                        token_expires_at INTEGER
                     );
                     CREATE TABLE IF NOT EXISTS server_tokens (
                         base_url TEXT PRIMARY KEY,
                         oauth2_token TEXT,
+                        token_expires_at INTEGER,
                         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
                     );
                 ";
@@ -254,6 +270,48 @@ namespace ScreenShot.src.settings
                 command.ExecuteNonQuery();
 
                 Debug.WriteLine($"[CONFIG] ✓ Token saved");
+            }
+            catch (Exception e)
+            {
+                Logging.Log($"Config save error: {e.Message}");
+            }
+        }
+
+        private long GetTokenExpiresAt()
+        {
+            try
+            {
+                if (connection == null)
+                    return 0;
+
+                using var command = connection.CreateCommand();
+                command.CommandText = "SELECT token_expires_at FROM config LIMIT 1";
+                var result = command.ExecuteScalar();
+                return result != null && long.TryParse(result.ToString(), out var expiresAt) ? expiresAt : 0;
+            }
+            catch (Exception e)
+            {
+                Debug.WriteLine($"[CONFIG] Error retrieving token expiry: {e.Message}");
+                return 0;
+            }
+        }
+
+        private void SaveTokenExpiresAt(long expiresAt)
+        {
+            try
+            {
+                if (connection == null)
+                {
+                    Logging.Log("Config save error: Database not initialized");
+                    return;
+                }
+
+                using var command = connection.CreateCommand();
+                command.CommandText = "UPDATE config SET token_expires_at = @expiresAt WHERE id = 1";
+                command.Parameters.AddWithValue("@expiresAt", expiresAt);
+                command.ExecuteNonQuery();
+
+                Debug.WriteLine($"[CONFIG] ✓ Token expiry saved: {expiresAt}");
             }
             catch (Exception e)
             {

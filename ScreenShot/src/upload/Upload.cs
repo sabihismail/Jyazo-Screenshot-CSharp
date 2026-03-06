@@ -56,10 +56,11 @@ namespace ScreenShot.src.upload
 
         private static async Task<string> UploadToServer(string file, Config config)
         {
-            // If no token available, try to authenticate first
-            if (string.IsNullOrWhiteSpace(config.OAuth2Token))
+            // Check if token is missing or expired
+            if (string.IsNullOrWhiteSpace(config.OAuth2Token) || config.IsTokenExpired())
             {
-                Debug.WriteLine("[UPLOAD] No token available - attempting OAuth2 authentication");
+                var expiredMsg = config.IsTokenExpired() ? "expired" : "missing";
+                Debug.WriteLine($"[UPLOAD] Token {expiredMsg} - attempting OAuth2 authentication");
                 var authSuccess = await TryOAuth2Authentication(config);
                 if (!authSuccess)
                 {

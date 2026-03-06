@@ -441,6 +441,18 @@ namespace ScreenShot.views
                         Debug.WriteLine($"[OAUTH] Extracted token from callback");
                         config.OAuth2Token = token;
                         Debug.WriteLine($"[OAUTH] Token saved to config");
+
+                        // Extract expiry time if provided
+                        var expiresAtStr = context.Request.QueryString["expiresAt"];
+                        if (!string.IsNullOrWhiteSpace(expiresAtStr) && long.TryParse(expiresAtStr, out var expiresAt))
+                        {
+                            config.TokenExpiresAt = expiresAt;
+                            Debug.WriteLine($"[OAUTH] Token expiry saved: {expiresAt}");
+                        }
+                        else
+                        {
+                            Debug.WriteLine("[OAUTH] No expiry info in callback URL");
+                        }
                     }
                     else
                     {
