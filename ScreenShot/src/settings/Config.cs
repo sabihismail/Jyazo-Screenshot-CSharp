@@ -12,6 +12,8 @@ namespace ScreenShot.src.settings
     public class Config
     {
         private string serverImpl = "";
+        private string tokenImpl = "";
+        private long tokenExpiresAtImpl = 0;
 
         public string Server
         {
@@ -21,22 +23,29 @@ namespace ScreenShot.src.settings
 
         public string OAuth2Token
         {
-            get => GetToken();
-            set => SaveToken(value);
+            get => tokenImpl;
+            set
+            {
+                tokenImpl = value;
+                SaveToken(value);
+            }
         }
 
         public long TokenExpiresAt
         {
-            get => GetTokenExpiresAt();
-            set => SaveTokenExpiresAt(value);
+            get => tokenExpiresAtImpl;
+            set
+            {
+                tokenExpiresAtImpl = value;
+                SaveTokenExpiresAt(value);
+            }
         }
 
         public bool IsTokenExpired()
         {
-            var expiresAt = GetTokenExpiresAt();
-            if (expiresAt <= 0) return true; // No expiry info, consider expired
+            if (tokenExpiresAtImpl <= 0) return true; // No expiry info, consider expired
             var nowUnix = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            return nowUnix >= expiresAt;
+            return nowUnix >= tokenExpiresAtImpl;
         }
 
         private static readonly string DbPath = GetDatabasePath();
@@ -190,12 +199,12 @@ namespace ScreenShot.src.settings
                 if (reader.Read())
                 {
                     Server = reader["server"]?.ToString() ?? "";
-                    OAuth2Token = reader["oauth2_token"]?.ToString() ?? "";
+                    tokenImpl = reader["oauth2_token"]?.ToString() ?? "";
 
                     if (reader["token_expires_at"] != DBNull.Value &&
                         long.TryParse(reader["token_expires_at"].ToString(), out var expiresAt))
                     {
-                        TokenExpiresAt = expiresAt;
+                        tokenExpiresAtImpl = expiresAt;
                     }
                 }
             }
@@ -241,25 +250,6 @@ namespace ScreenShot.src.settings
             }
         }
 
-        private string GetToken()
-        {
-            try
-            {
-                if (connection == null)
-                    return "";
-
-                using var command = connection.CreateCommand();
-                command.CommandText = "SELECT oauth2_token FROM config LIMIT 1";
-                var result = command.ExecuteScalar();
-                return result?.ToString() ?? "";
-            }
-            catch (Exception e)
-            {
-                Debug.WriteLine($"[CONFIG] Error retrieving token: {e.Message}");
-                return "";
-            }
-        }
-
         private void SaveToken(string token)
         {
             try
@@ -280,25 +270,6 @@ namespace ScreenShot.src.settings
             catch (Exception e)
             {
                 Logging.Log($"Config save error: {e.Message}");
-            }
-        }
-
-        private long GetTokenExpiresAt()
-        {
-            try
-            {
-                if (connection == null)
-                    return 0;
-
-                using var command = connection.CreateCommand();
-                command.CommandText = "SELECT token_expires_at FROM config LIMIT 1";
-                var result = command.ExecuteScalar();
-                return result != null && long.TryParse(result.ToString(), out var expiresAt) ? expiresAt : 0;
-            }
-            catch (Exception e)
-            {
-                Debug.WriteLine($"[CONFIG] Error retrieving token expiry: {e.Message}");
-                return 0;
             }
         }
 
