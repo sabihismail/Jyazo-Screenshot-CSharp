@@ -73,6 +73,13 @@ namespace ScreenShot.views
             }
 
             Debug.WriteLine($"[APP] Configured server: {config.Server}");
+
+            // Run OAuth once at startup if server is configured but no token exists
+            if (!string.IsNullOrWhiteSpace(config.Server) && string.IsNullOrWhiteSpace(config.OAuth2Token))
+            {
+                Debug.WriteLine($"[APP] Server configured but no OAuth token - running authentication");
+                CheckOAuth2(() => { });
+            }
         }
 
         private void ConfigureShortcuts()
@@ -167,14 +174,11 @@ namespace ScreenShot.views
             if (isAlreadyCapturingScreen > 0) return;
 
             Interlocked.Increment(ref isAlreadyCapturingScreen);
-            
-            CheckOAuth2(() =>
-            {
-                var captureGeneric = (T)Activator.CreateInstance(typeof(T), settings, config);
 
-                captureGeneric.Completed += (_, _) => Interlocked.Decrement(ref isAlreadyCapturingScreen);
-                captureGeneric.Show();
-            });
+            var captureGeneric = (T)Activator.CreateInstance(typeof(T), settings, config);
+
+            captureGeneric.Completed += (_, _) => Interlocked.Decrement(ref isAlreadyCapturingScreen);
+            captureGeneric.Show();
         }
 
         private void ConfigureTaskbar()
@@ -436,7 +440,7 @@ namespace ScreenShot.views
                     if (!string.IsNullOrWhiteSpace(token))
                     {
                         Debug.WriteLine($"[OAUTH] Extracted token from callback");
-                        config.SetOAuth2Token(token);
+                        config.OAuth2Token = token;
                         Debug.WriteLine($"[OAUTH] Token saved to config");
                     }
                     else

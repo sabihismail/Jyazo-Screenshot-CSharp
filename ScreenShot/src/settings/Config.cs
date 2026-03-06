@@ -12,6 +12,7 @@ namespace ScreenShot.src.settings
     public class Config
     {
         private string serverImpl = "";
+        private TokenManager tokenManager;
 
         public string Server
         {
@@ -19,7 +20,11 @@ namespace ScreenShot.src.settings
             private set => serverImpl = value;
         }
 
-        public string OAuth2Token = "";
+        public string OAuth2Token
+        {
+            get => tokenManager?.GetToken() ?? "";
+            set => tokenManager?.SaveToken(value);
+        }
 
         private static readonly string DbPath = GetDatabasePath();
 
@@ -99,7 +104,8 @@ namespace ScreenShot.src.settings
             InitializeDatabase();
             if (connection != null)
             {
-                Debug.WriteLine($"[CONFIG] Connection successful, loading config");
+                Debug.WriteLine($"[CONFIG] Connection successful, initializing managers");
+                tokenManager = new TokenManager(connection);
                 LoadConfig();
             }
             else
@@ -135,7 +141,12 @@ namespace ScreenShot.src.settings
                         id INTEGER PRIMARY KEY,
                         server TEXT,
                         oauth2_token TEXT
-                    )
+                    );
+                    CREATE TABLE IF NOT EXISTS server_tokens (
+                        base_url TEXT PRIMARY KEY,
+                        oauth2_token TEXT,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    );
                 ";
                 createCommand.ExecuteNonQuery();
 
@@ -212,27 +223,14 @@ namespace ScreenShot.src.settings
             }
         }
 
-        public void SetOAuth2Token(string token)
+        public string GetTokenForUrl(string url)
         {
-            OAuth2Token = token;
+            return tokenManager?.GetTokenForUrl(url) ?? "";
+        }
 
-            try
-            {
-                if (connection == null)
-                {
-                    Logging.Log("Token save error: Database not initialized");
-                    return;
-                }
-
-                using var command = connection.CreateCommand();
-                command.CommandText = "UPDATE config SET oauth2_token = @token WHERE id = 1";
-                command.Parameters.AddWithValue("@token", token ?? "");
-                command.ExecuteNonQuery();
-            }
-            catch (Exception e)
-            {
-                Logging.Log($"Token save error: {e.Message}");
-            }
+        public void SaveTokenForUrl(string url, string token)
+        {
+            tokenManager?.SaveTokenForUrl(url, token);
         }
     }
 }
