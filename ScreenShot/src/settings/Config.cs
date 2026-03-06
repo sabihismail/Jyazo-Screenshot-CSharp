@@ -184,13 +184,19 @@ namespace ScreenShot.src.settings
                 }
 
                 using var command = connection.CreateCommand();
-                command.CommandText = "SELECT server, oauth2_token FROM config LIMIT 1";
+                command.CommandText = "SELECT server, oauth2_token, token_expires_at FROM config LIMIT 1";
 
                 using var reader = command.ExecuteReader();
                 if (reader.Read())
                 {
                     Server = reader["server"]?.ToString() ?? "";
                     OAuth2Token = reader["oauth2_token"]?.ToString() ?? "";
+
+                    if (reader["token_expires_at"] != DBNull.Value &&
+                        long.TryParse(reader["token_expires_at"].ToString(), out var expiresAt))
+                    {
+                        TokenExpiresAt = expiresAt;
+                    }
                 }
             }
             catch (Exception e)
