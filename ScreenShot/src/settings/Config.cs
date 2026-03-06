@@ -24,12 +24,8 @@ namespace ScreenShot.src.settings
 
         public string OAuth2Token
         {
-            get => tokenImpl;
-            set
-            {
-                tokenImpl = value;
-                SaveToken(value);
-            }
+            get => GetTokenForServer();
+            set => SaveTokenForServer(value);
         }
 
         public long TokenExpiresAt
@@ -38,7 +34,7 @@ namespace ScreenShot.src.settings
             set
             {
                 tokenExpiresAtImpl = value;
-                SaveTokenExpiresAt(value);
+                SaveTokenExpiryForServer(value);
             }
         }
 
@@ -226,12 +222,31 @@ namespace ScreenShot.src.settings
                 if (reader.Read())
                 {
                     Server = reader["server"]?.ToString() ?? "";
-                    tokenImpl = reader["oauth2_token"]?.ToString() ?? "";
 
-                    if (reader["token_expires_at"] != DBNull.Value &&
-                        long.TryParse(reader["token_expires_at"].ToString(), out var expiresAt))
+                    // Load token for the configured server
+                    if (!string.IsNullOrWhiteSpace(serverImpl))
                     {
-                        tokenExpiresAtImpl = expiresAt;
+                        var baseUrl = ExtractBaseUrl(serverImpl);
+                        using var tokenCommand = connection.CreateCommand();
+                        tokenCommand.CommandText = "SELECT oauth2_token, token_expires_at FROM server_tokens WHERE base_url = @base_url LIMIT 1";
+                        tokenCommand.Parameters.AddWithValue("@base_url", baseUrl);
+
+                        using var tokenReader = tokenCommand.ExecuteReader();
+                        if (tokenReader.Read())
+                        {
+                            tokenImpl = tokenReader["oauth2_token"]?.ToString() ?? "";
+
+                            if (tokenReader["token_expires_at"] != DBNull.Value &&
+                                long.TryParse(tokenReader["token_expires_at"].ToString(), out var expiresAt))
+                            {
+                                tokenExpiresAtImpl = expiresAt;
+                            }
+
+                            if (!string.IsNullOrWhiteSpace(tokenImpl))
+                            {
+                                Debug.WriteLine($"[CONFIG] Loaded existing token for server: {baseUrl}");
+                            }
+                        }
                     }
                 }
             }
@@ -277,22 +292,57 @@ namespace ScreenShot.src.settings
             }
         }
 
-        private void SaveToken(string token)
+        private string GetTokenForServer()
         {
             try
             {
-                if (connection == null)
+                if (connection == null || string.IsNullOrWhiteSpace(serverImpl))
+                    return "";
+
+                var baseUrl = ExtractBaseUrl(serverImpl);
+                using var command = connection.CreateCommand();
+                command.CommandText = "SELECT oauth2_token FROM server_tokens WHERE base_url = @base_url LIMIT 1";
+                command.Parameters.AddWithValue("@base_url", baseUrl);
+
+                var result = command.ExecuteScalar();
+                if (result != null)
                 {
-                    Logging.Log("Config save error: Database not initialized");
+                    var token = result.ToString();
+                    Debug.WriteLine($"[CONFIG] Loaded token for server: {baseUrl}");
+                    return token;
+                }
+
+                Debug.WriteLine($"[CONFIG] No token found for server: {baseUrl}");
+                return "";
+            }
+            catch (Exception e)
+            {
+                Debug.WriteLine($"[CONFIG] Error retrieving server token: {e.Message}");
+                return "";
+            }
+        }
+
+        private void SaveTokenForServer(string token)
+        {
+            try
+            {
+                if (connection == null || string.IsNullOrWhiteSpace(serverImpl))
+                {
+                    Logging.Log("Config save error: Database not initialized or server not set");
                     return;
                 }
 
+                var baseUrl = ExtractBaseUrl(serverImpl);
                 using var command = connection.CreateCommand();
-                command.CommandText = "UPDATE config SET oauth2_token = @token WHERE id = 1";
+                command.CommandText = @"
+                    INSERT OR REPLACE INTO server_tokens (base_url, oauth2_token)
+                    VALUES (@base_url, @token)";
+                command.Parameters.AddWithValue("@base_url", baseUrl);
                 command.Parameters.AddWithValue("@token", token ?? "");
                 command.ExecuteNonQuery();
 
-                Debug.WriteLine($"[CONFIG] ✓ Token saved");
+                tokenImpl = token;
+                Debug.WriteLine($"[CONFIG] ✓ Token saved for server: {baseUrl}");
             }
             catch (Exception e)
             {
@@ -300,26 +350,47 @@ namespace ScreenShot.src.settings
             }
         }
 
-        private void SaveTokenExpiresAt(long expiresAt)
+        private void SaveTokenExpiryForServer(long expiresAt)
         {
             try
             {
-                if (connection == null)
+                if (connection == null || string.IsNullOrWhiteSpace(serverImpl))
                 {
-                    Logging.Log("Config save error: Database not initialized");
+                    Logging.Log("Config save error: Database not initialized or server not set");
                     return;
                 }
 
+                var baseUrl = ExtractBaseUrl(serverImpl);
                 using var command = connection.CreateCommand();
-                command.CommandText = "UPDATE config SET token_expires_at = @expiresAt WHERE id = 1";
+                command.CommandText = @"
+                    UPDATE server_tokens SET token_expires_at = @expiresAt
+                    WHERE base_url = @base_url";
+                command.Parameters.AddWithValue("@base_url", baseUrl);
                 command.Parameters.AddWithValue("@expiresAt", expiresAt);
                 command.ExecuteNonQuery();
 
-                Debug.WriteLine($"[CONFIG] ✓ Token expiry saved: {expiresAt}");
+                tokenExpiresAtImpl = expiresAt;
+                Debug.WriteLine($"[CONFIG] ✓ Token expiry saved for server: {baseUrl}");
             }
             catch (Exception e)
             {
                 Logging.Log($"Config save error: {e.Message}");
+            }
+        }
+
+        private static string ExtractBaseUrl(string url)
+        {
+            if (string.IsNullOrWhiteSpace(url))
+                return "";
+
+            try
+            {
+                var uri = new Uri(url.StartsWith("http") ? url : $"http://{url}");
+                return $"{uri.Scheme}://{uri.Host}";
+            }
+            catch
+            {
+                return url;
             }
         }
     }
