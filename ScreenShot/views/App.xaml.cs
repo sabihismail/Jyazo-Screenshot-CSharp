@@ -420,17 +420,30 @@ namespace ScreenShot.views
                 // Prepare local listener for callback
                 var http = new HttpListener();
                 http.Prefixes.Add(localCallbackUrl);
-                http.Start();
-                Debug.WriteLine($"[OAUTH] Listening for callback at: {localCallbackUrl}");
+
+                try
+                {
+                    http.Start();
+                    Debug.WriteLine($"[OAUTH] ✓ Listening for callback at: {localCallbackUrl}");
+                    Logging.Log($"OAuth callback listener started on port 52805");
+                }
+                catch (HttpListenerException ex)
+                {
+                    Debug.WriteLine($"[OAUTH] ✗ Failed to start listener: {ex.Message}");
+                    Logging.Log($"FATAL: Cannot start OAuth listener on port 52805: {ex.Message}");
+                    Logging.Log("Port 52805 may be in use. Kill all Jyazo.exe processes and retry.");
+                    return;
+                }
 
                 try
                 {
                     Process.Start(redirectUri);
-                    Debug.WriteLine("[OAUTH] Browser opened - user authenticating");
+                    Debug.WriteLine("[OAUTH] ✓ Browser opened - user authenticating");
+                    Logging.Log("OAuth browser window opened, waiting for user authentication");
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine($"[OAUTH] Failed to open browser: {ex.Message}");
+                    Debug.WriteLine($"[OAUTH] ✗ Failed to open browser: {ex.Message}");
                     Logging.Log($"Failed to open browser for OAuth: {ex.Message}");
                     http.Stop();
                     return;
@@ -440,30 +453,36 @@ namespace ScreenShot.views
                 {
                     var context = await http.GetContextAsync();
                     Debug.WriteLine($"[OAUTH] ✓ Received callback at local listener");
+                    Debug.WriteLine($"[OAUTH] Request URL: {context.Request.Url}");
+                    Debug.WriteLine($"[OAUTH] Query string: {context.Request.QueryString}");
 
                     // Extract token from query parameters
                     var token = context.Request.QueryString["token"];
                     if (!string.IsNullOrWhiteSpace(token))
                     {
-                        Debug.WriteLine($"[OAUTH] Extracted token from callback");
+                        Debug.WriteLine($"[OAUTH] ✓ Extracted token from callback");
                         config.OAuth2Token = token;
-                        Debug.WriteLine($"[OAUTH] Token saved to config");
+                        Debug.WriteLine($"[OAUTH] ✓ Token saved to config");
+                        Logging.Log($"Token acquired from OAuth2 callback");
 
                         // Extract expiry time if provided
                         var expiresAtStr = context.Request.QueryString["expiresAt"];
                         if (!string.IsNullOrWhiteSpace(expiresAtStr) && long.TryParse(expiresAtStr, out var expiresAt))
                         {
                             config.TokenExpiresAt = expiresAt;
-                            Debug.WriteLine($"[OAUTH] Token expiry saved: {expiresAt}");
+                            Debug.WriteLine($"[OAUTH] ✓ Token expiry saved: {expiresAt}");
+                            Logging.Log($"Token expiry set to: {expiresAt}");
                         }
                         else
                         {
-                            Debug.WriteLine("[OAUTH] No expiry info in callback URL");
+                            Debug.WriteLine($"[OAUTH] ✗ No valid expiry info. expiresAtStr='{expiresAtStr}'");
+                            Logging.Log("Warning: Token expiry info missing from OAuth callback");
                         }
                     }
                     else
                     {
-                        Debug.WriteLine("[OAUTH] No token in callback URL");
+                        Debug.WriteLine($"[OAUTH] ✗ No token in callback URL");
+                        Logging.Log("Error: OAuth callback received but no token parameter found");
                     }
 
                     context.Response.StatusCode = 200;
