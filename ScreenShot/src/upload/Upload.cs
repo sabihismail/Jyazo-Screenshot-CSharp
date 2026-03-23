@@ -57,9 +57,14 @@ namespace ScreenShot.src.upload
         private static async Task<string> UploadToServer(string file, Config config)
         {
             // Check if token is missing or expired
-            if (string.IsNullOrWhiteSpace(config.OAuth2Token) || config.IsTokenExpired())
+            var tokenMissing = string.IsNullOrWhiteSpace(config.OAuth2Token);
+            var tokenExpired = config.IsTokenExpired();
+
+            Debug.WriteLine($"[UPLOAD] Token check - missing: {tokenMissing}, expired: {tokenExpired}");
+
+            if (tokenMissing || tokenExpired)
             {
-                var expiredMsg = config.IsTokenExpired() ? "expired" : "missing";
+                var expiredMsg = tokenExpired ? "expired" : "missing";
                 Debug.WriteLine($"[UPLOAD] Token {expiredMsg} - attempting OAuth2 authentication");
                 var authSuccess = await TryOAuth2Authentication(config);
                 if (!authSuccess)
@@ -67,6 +72,10 @@ namespace ScreenShot.src.upload
                     Logging.Log("Authentication failed. Cannot upload without valid credentials.");
                     return "";
                 }
+            }
+            else
+            {
+                Debug.WriteLine($"[UPLOAD] ✓ Token is valid, skipping OAuth2");
             }
 
             using var client = new HttpClient();
