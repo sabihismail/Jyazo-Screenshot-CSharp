@@ -208,20 +208,10 @@ namespace ScreenShot.views.windows
                 IsChecked(ChkEnablePrintScreen),
                 IsChecked(ChkPlaySound));
 
-            var serverUrl = TxtServerEndpoint.Text.Trim();
-
-            if (string.IsNullOrWhiteSpace(serverUrl))
-            {
-                MessageBox.Show("Server URL cannot be empty.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                return;
-            }
-
             settings.SaveSettings(settingsData);
 
             // Save server endpoint to config
-            config.SaveConfig(serverUrl);
-
-            MessageBox.Show($"✓ Server endpoint saved successfully:\n{serverUrl}", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+            config.SaveConfig(TxtServerEndpoint.Text.Trim());
 
             Close();
         }
