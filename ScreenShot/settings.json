@@ -1,0 +1,12 @@
+{
+  "EnableFullscreenCapture": true,
+  "EnableGIF": true,
+  "SaveAllImages": false,
+  "EnablePrintScreen": false,
+  "EnableSound": false,
+  "SaveDirectory": "C:\\Users\\arkaz\\ArkaPrime\\Jyazo\\All Images\\",
+  "EnableImageShortcut": false,
+  "EnableGIFShortcut": false,
+  "ImageKeys": "LeftCtrl LeftShift C",
+  "GifKeys": "LeftCtrl LeftShift G"
+}

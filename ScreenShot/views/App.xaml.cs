@@ -64,15 +64,22 @@ namespace ScreenShot.views
             WindowHistory.BeginObservingWindows();
 
             // Show settings window on first run if server is not configured
+            Debug.WriteLine($"[APP] Checking server configuration... isDevMode={isDevMode}");
+            Debug.WriteLine($"[APP] config.Server (via property): {config.Server}");
+            Debug.WriteLine($"[APP] serverImpl (direct field): {config.GetType().GetField("serverImpl", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.GetValue(config)}");
+
             if (string.IsNullOrWhiteSpace(config.Server))
             {
                 Logging.Log($"Server endpoint not configured. Please input your server's image upload host location. An example php host file is located at {Constants.GITHUB}.");
+                Debug.WriteLine($"[APP] ✗ Server not configured, showing settings window");
 
                 var settingsWindow = new SettingsWindow(settings, config);
                 settingsWindow.Show();
             }
-
-            Debug.WriteLine($"[APP] Configured server: {config.Server}");
+            else
+            {
+                Debug.WriteLine($"[APP] ✓ Server configured: {config.Server}");
+            }
 
             // Run OAuth once at startup if server is configured but no token exists
             if (!string.IsNullOrWhiteSpace(config.Server) && string.IsNullOrWhiteSpace(config.OAuth2Token))

@@ -25,17 +25,13 @@ namespace ScreenShot.src.settings
         public string OAuth2Token
         {
             get => GetTokenForServer();
-            set => SaveTokenForServer(value);
+            set => SaveTokenAndExpiry(value, tokenExpiresAtImpl);
         }
 
         public long TokenExpiresAt
         {
             get => tokenExpiresAtImpl;
-            set
-            {
-                tokenExpiresAtImpl = value;
-                SaveTokenExpiryForServer(value);
-            }
+            set => SaveTokenAndExpiry(tokenImpl, value);
         }
 
         public bool IsTokenExpired()
@@ -49,15 +45,10 @@ namespace ScreenShot.src.settings
 
         private static string GetDatabasePath()
         {
-            var configDir = Path.GetDirectoryName(Constants.CONFIG_FILE);
-            if (string.IsNullOrEmpty(configDir))
-            {
-                // Fallback to AppData if config dir is invalid
-                configDir = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                    "ArkaPrime", "Jyazo");
-            }
-            return Path.Combine(configDir, "config.db");
+            // Use user profile: %USERPROFILE%\ArkaPrime\Jyazo\settings.db
+            var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            var configDir = Path.Combine(userProfile, "ArkaPrime", "Jyazo");
+            return Path.Combine(configDir, "settings.db");
         }
 
         private static readonly string DbPassword = GetDatabasePassword();
@@ -148,8 +139,13 @@ namespace ScreenShot.src.settings
                     SQLiteConnection.CreateFile(DbPath);
                 }
 
-                connection = new SQLiteConnection($"Data Source={DbPath};Version=3;Password={DbPassword};PRAGMA journal_mode = WAL;PRAGMA synchronous = NORMAL;");
+                connection = new SQLiteConnection($"Data Source={DbPath};Version=3;Password={DbPassword};");
                 connection.Open();
+
+                // Configure database pragmas for performance
+                using var pragmaCmd = connection.CreateCommand();
+                pragmaCmd.CommandText = "PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL;";
+                pragmaCmd.ExecuteNonQuery();
 
                 using var createCommand = connection.CreateCommand();
                 createCommand.CommandText = @"
@@ -171,8 +167,9 @@ namespace ScreenShot.src.settings
                 // Schema migration: add missing columns if they don't exist
                 try
                 {
+                    // Check and add token_expires_at to server_tokens table
                     using var checkCommand = connection.CreateCommand();
-                    checkCommand.CommandText = "PRAGMA table_info(config)";
+                    checkCommand.CommandText = "PRAGMA table_info(server_tokens)";
                     using var reader = checkCommand.ExecuteReader();
                     var columns = new HashSet<string>();
                     while (reader.Read())
@@ -184,9 +181,9 @@ namespace ScreenShot.src.settings
                     if (!columns.Contains("token_expires_at"))
                     {
                         using var alterCommand = connection.CreateCommand();
-                        alterCommand.CommandText = "ALTER TABLE config ADD COLUMN token_expires_at INTEGER DEFAULT 0";
+                        alterCommand.CommandText = "ALTER TABLE server_tokens ADD COLUMN token_expires_at INTEGER DEFAULT 0";
                         alterCommand.ExecuteNonQuery();
-                        Debug.WriteLine($"[CONFIG] Added missing token_expires_at column");
+                        Debug.WriteLine($"[CONFIG] Added missing token_expires_at column to server_tokens");
                     }
                 }
                 catch (Exception ex)
@@ -265,29 +262,60 @@ namespace ScreenShot.src.settings
                 if (connection == null)
                 {
                     Logging.Log("Config save error: Database not initialized");
+                    Debug.WriteLine("[CONFIG] ✗ Cannot save config: connection is null");
                     return;
                 }
+
+                if (string.IsNullOrWhiteSpace(server))
+                {
+                    Logging.Log("Config save error: Server URL is empty");
+                    Debug.WriteLine("[CONFIG] ✗ Cannot save config: server URL is empty");
+                    return;
+                }
+
+                Debug.WriteLine($"[CONFIG] Attempting to save server: {server}");
 
                 // Check if record exists
                 using var checkCommand = connection.CreateCommand();
                 checkCommand.CommandText = "SELECT COUNT(*) FROM config";
                 var count = (long)checkCommand.ExecuteScalar();
+                Debug.WriteLine($"[CONFIG] Existing config rows: {count}");
 
                 using var command = connection.CreateCommand();
                 if (count > 0)
                 {
                     command.CommandText = "UPDATE config SET server = @server WHERE id = 1";
+                    Debug.WriteLine("[CONFIG] Executing UPDATE");
                 }
                 else
                 {
                     command.CommandText = "INSERT INTO config (id, server) VALUES (1, @server)";
+                    Debug.WriteLine("[CONFIG] Executing INSERT");
                 }
 
-                command.Parameters.AddWithValue("@server", server ?? "");
-                command.ExecuteNonQuery();
+                command.Parameters.AddWithValue("@server", server);
+                var rowsAffected = command.ExecuteNonQuery();
+                Debug.WriteLine($"[CONFIG] ✓ Rows affected: {rowsAffected}");
+
+                // Verify the save by querying immediately
+                using var verifyCommand = connection.CreateCommand();
+                verifyCommand.CommandText = "SELECT server FROM config WHERE id = 1";
+                var savedServer = verifyCommand.ExecuteScalar()?.ToString();
+                if (savedServer == server)
+                {
+                    Debug.WriteLine($"[CONFIG] ✓ Server verified in database: {server}");
+                    Logging.Log($"Server endpoint saved successfully: {server}");
+                }
+                else
+                {
+                    Debug.WriteLine($"[CONFIG] ✗ Server verification failed. Saved: {savedServer}, Expected: {server}");
+                    Logging.Log($"Server endpoint may not have saved correctly");
+                }
             }
             catch (Exception e)
             {
+                Debug.WriteLine($"[CONFIG] ✗ SaveConfig exception: {e.Message}");
+                Debug.WriteLine($"[CONFIG] Stack trace: {e.StackTrace}");
                 Logging.Log($"Config save error: {e.Message}");
             }
         }
@@ -322,7 +350,11 @@ namespace ScreenShot.src.settings
             }
         }
 
-        private void SaveTokenForServer(string token)
+        /// <summary>
+        /// Saves token and expiry time as atomic operation.
+        /// Prevents data loss from INSERT OR REPLACE truncating unspecified columns.
+        /// </summary>
+        private void SaveTokenAndExpiry(string token, long expiresAt)
         {
             try
             {
@@ -335,42 +367,16 @@ namespace ScreenShot.src.settings
                 var baseUrl = ExtractBaseUrl(serverImpl);
                 using var command = connection.CreateCommand();
                 command.CommandText = @"
-                    INSERT OR REPLACE INTO server_tokens (base_url, oauth2_token)
-                    VALUES (@base_url, @token)";
+                    INSERT OR REPLACE INTO server_tokens (base_url, oauth2_token, token_expires_at)
+                    VALUES (@base_url, @token, @expiresAt)";
                 command.Parameters.AddWithValue("@base_url", baseUrl);
                 command.Parameters.AddWithValue("@token", token ?? "");
-                command.ExecuteNonQuery();
-
-                tokenImpl = token;
-                Debug.WriteLine($"[CONFIG] ✓ Token saved for server: {baseUrl}");
-            }
-            catch (Exception e)
-            {
-                Logging.Log($"Config save error: {e.Message}");
-            }
-        }
-
-        private void SaveTokenExpiryForServer(long expiresAt)
-        {
-            try
-            {
-                if (connection == null || string.IsNullOrWhiteSpace(serverImpl))
-                {
-                    Logging.Log("Config save error: Database not initialized or server not set");
-                    return;
-                }
-
-                var baseUrl = ExtractBaseUrl(serverImpl);
-                using var command = connection.CreateCommand();
-                command.CommandText = @"
-                    UPDATE server_tokens SET token_expires_at = @expiresAt
-                    WHERE base_url = @base_url";
-                command.Parameters.AddWithValue("@base_url", baseUrl);
                 command.Parameters.AddWithValue("@expiresAt", expiresAt);
                 command.ExecuteNonQuery();
 
+                tokenImpl = token;
                 tokenExpiresAtImpl = expiresAt;
-                Debug.WriteLine($"[CONFIG] ✓ Token expiry saved for server: {baseUrl}");
+                Debug.WriteLine($"[CONFIG] ✓ Token and expiry saved for server: {baseUrl} (expires: {expiresAt})");
             }
             catch (Exception e)
             {
