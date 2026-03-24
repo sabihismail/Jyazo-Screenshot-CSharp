@@ -508,15 +508,15 @@ namespace ScreenShot.views
 
                 try
                 {
-                    // Wait max 5 minutes for OAuth callback, then timeout and clean up
+                    // Wait max 1 minute for OAuth callback, then timeout and clean up
                     var contextTask = http.GetContextAsync();
-                    var timeoutTask = Task.Delay(TimeSpan.FromMinutes(5));
+                    var timeoutTask = Task.Delay(TimeSpan.FromMinutes(1));
                     var firstTask = await Task.WhenAny(contextTask, timeoutTask).ConfigureAwait(true);
 
                     if (firstTask == timeoutTask)
                     {
-                        Debug.WriteLine("[OAUTH] ✗ OAuth callback timeout after 5 minutes");
-                        Logging.Log("OAuth callback timeout - please complete authentication faster next time");
+                        Debug.WriteLine("[OAUTH] ✗ OAuth callback timeout after 1 minute");
+                        Logging.Log("OAuth callback timeout after 1 minute - complete authentication faster or toggle dev mode will timeout");
                         return;
                     }
 
