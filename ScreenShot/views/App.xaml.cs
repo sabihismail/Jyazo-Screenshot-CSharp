@@ -426,12 +426,13 @@ namespace ScreenShot.views
                 response.Dispose();
 
                 // Prepare local listener for callback
-                var http = new HttpListener();
-                http.Prefixes.Add(localCallbackUrl);
-
-                try
+                using (var http = new HttpListener())
                 {
-                    http.Start();
+                    http.Prefixes.Add(localCallbackUrl);
+
+                    try
+                    {
+                        http.Start();
                     Debug.WriteLine($"[OAUTH] ✓ Listening for callback at: {localCallbackUrl}");
                     Logging.Log($"OAuth callback listener started on port 52805");
                 }
@@ -557,12 +558,13 @@ namespace ScreenShot.views
                     context.Response.OutputStream.Write(buffer, 0, buffer.Length);
                     context.Response.OutputStream.Close();
                 }
-                finally
-                {
-                    http.Stop();
-                }
+                    finally
+                    {
+                        http.Stop();
+                    }
 
-                Current.Dispatcher.Invoke(callback);
+                    Current.Dispatcher.Invoke(callback);
+                }
             }
             else
             {
