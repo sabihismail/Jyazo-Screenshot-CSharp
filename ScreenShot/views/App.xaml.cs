@@ -32,6 +32,7 @@ namespace ScreenShot.views
         public static int isDevMode;
         private static int isAlreadyCapturingScreen;
         private static bool isOAuth2InProgress = false;
+        private static bool forceOAuth2Abort = false;
         
         private NotifyIcon taskbarIcon;
 
@@ -242,11 +243,18 @@ namespace ScreenShot.views
                     Logging.Log("Dev mode disabled - restarting authentication");
                 }
 
-                // Clear token and restart OAuth for the new server
-                isOAuth2InProgress = false;
-                config.OAuth2Token = null;
-                config.TokenExpiresAt = 0;
-                CheckOAuth2(() => { });
+                // Abort current OAuth flow if one is running
+                forceOAuth2Abort = true;
+
+                // Wait a moment for current flow to abort, then restart
+                Task.Delay(500).ContinueWith(_ =>
+                {
+                    forceOAuth2Abort = false;
+                    isOAuth2InProgress = false;
+                    config.OAuth2Token = null;
+                    config.TokenExpiresAt = 0;
+                    CheckOAuth2(() => { });
+                });
             });
             menuEnableDevMode.CheckOnClick = true;
 
@@ -387,6 +395,13 @@ namespace ScreenShot.views
 
         private static async Task CheckIfOAuth2CredentialsValidInternal(Config config, Action callback)
         {
+            // Check if we should abort due to dev mode toggle or other reason
+            if (forceOAuth2Abort)
+            {
+                Debug.WriteLine("[OAUTH] OAuth2 aborted by user action");
+                return;
+            }
+
             const int OAUTH_CALLBACK_PORT = 52805;
             var localCallbackUrl = $"http://{IPAddress.Loopback}:{OAUTH_CALLBACK_PORT}/";
 
