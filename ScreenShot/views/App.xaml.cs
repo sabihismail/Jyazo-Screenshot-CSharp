@@ -31,6 +31,7 @@ namespace ScreenShot.views
     {
         public static int isDevMode;
         private static int isAlreadyCapturingScreen;
+        private static bool isOAuth2InProgress = false;
         
         private NotifyIcon taskbarIcon;
 
@@ -353,6 +354,28 @@ namespace ScreenShot.views
 
         // OAuth2 Flow based on https://github.com/googlesamples/oauth-apps-for-windows/blob/master/OAuthDesktopApp/OAuthDesktopApp/MainWindow.xaml.cs
         public static async Task CheckIfOAuth2CredentialsValid(Config config, Action callback)
+        {
+            // Prevent multiple concurrent OAuth flows on the same port
+            if (isOAuth2InProgress)
+            {
+                Debug.WriteLine("[OAUTH] OAuth2 already in progress, skipping");
+                Logging.Log("OAuth2 authentication already in progress");
+                return;
+            }
+
+            isOAuth2InProgress = true;
+
+            try
+            {
+                await CheckIfOAuth2CredentialsValidInternal(config, callback);
+            }
+            finally
+            {
+                isOAuth2InProgress = false;
+            }
+        }
+
+        private static async Task CheckIfOAuth2CredentialsValidInternal(Config config, Action callback)
         {
             const int OAUTH_CALLBACK_PORT = 52805;
             var localCallbackUrl = $"http://{IPAddress.Loopback}:{OAUTH_CALLBACK_PORT}/";
