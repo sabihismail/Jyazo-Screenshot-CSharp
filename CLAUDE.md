@@ -2,21 +2,28 @@
 
 ## Building
 
+**Always build both Debug and Release configurations.**
+
 ### Via MSBuild
 
 ```bash
 # From project root
 cd "D:\Coding - Unsynced\JyazoC#"
 
-# Build Debug configuration
+# Build Debug configuration (default)
 "D:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe" ScreenShot.sln
+
+# Build Release configuration
+"D:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe" ScreenShot.sln -p:Configuration=Release
 ```
 
-Executable output: `ScreenShot/bin/Debug/Jyazo.exe`
+Executable outputs:
+- Debug: `ScreenShot/bin/Debug/Jyazo.exe`
+- Release: `ScreenShot/bin/Release/Jyazo.exe`
 
 ### In Visual Studio
 
-Open `ScreenShot.sln` and build (Ctrl+Shift+B).
+Open `ScreenShot.sln`, select configuration (Debug/Release) from dropdown, and build (Ctrl+Shift+B).
 
 ## OAuth2 Authentication Port
 
