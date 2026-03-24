@@ -78,7 +78,8 @@ namespace ScreenShot.src.upload
                 Debug.WriteLine($"[UPLOAD] ✓ Token is valid, skipping OAuth2");
             }
 
-            using var client = new HttpClient();
+            var handler = new HttpClientHandler { AllowAutoRedirect = true };
+            using var client = new HttpClient(handler);
 
             using var formData = new MultipartFormDataContent();
 

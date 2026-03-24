@@ -4,15 +4,20 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using ScreenShot.Properties;
+using ScreenShot.views;
 
 namespace ScreenShot.src.tools
 {
     public static class Logging
     {
-        private static readonly string LogFile = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "Jyazo",
-            "logs.txt");
+        private static string GetLogFile()
+        {
+            var mode = App.isDevMode == 1 ? "dev" : "release";
+            return Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "Jyazo",
+                $"logs-{mode}.txt");
+        }
 
         // ReSharper disable once UnusedMember.Global
         public static void Log(string text, Exception e)
@@ -37,13 +42,14 @@ namespace ScreenShot.src.tools
         {
             try
             {
-                Directory.CreateDirectory(Path.GetDirectoryName(LogFile)!);
+                var logFile = GetLogFile();
+                Directory.CreateDirectory(Path.GetDirectoryName(logFile)!);
                 string logMessage = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {message}";
 
                 if (exception != null)
                     logMessage += Environment.NewLine + exception;
 
-                File.AppendAllText(LogFile, logMessage + Environment.NewLine);
+                File.AppendAllText(logFile, logMessage + Environment.NewLine);
             }
             catch
             {

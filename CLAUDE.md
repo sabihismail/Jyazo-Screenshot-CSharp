@@ -63,3 +63,13 @@ because it conflicts with an existing registration on the machine.
 **Why not dynamic ports?**
 
 The server hardcodes the redirect URI to `http://127.0.0.1:52805/` for security reasons. Changing this would require modifying both client and server code to coordinate port selection, which defeats the purpose of a fixed OAuth callback endpoint. The solution is proper process cleanup, not port flexibility.
+
+## Logging
+
+Log files are stored in: `C:\Users\arkaz\AppData\Roaming\Jyazo\`
+
+**Separate log files by mode:**
+- `logs-dev.txt` — Logs when dev mode is enabled (connects to `http://localhost:3000` or `DEV_SERVER` env var)
+- `logs-release.txt` — Logs in normal mode (connects to production server from config)
+
+This separation makes it easier to debug issues specific to each mode without mixing log output.

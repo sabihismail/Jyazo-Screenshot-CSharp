@@ -33,6 +33,7 @@ namespace ScreenShot.views
         private static int isAlreadyCapturingScreen;
         private static bool isOAuth2InProgress = false;
         private static bool forceOAuth2Abort = false;
+        private static System.Net.HttpListener currentListener = null;
         
         private NotifyIcon taskbarIcon;
 
@@ -243,16 +244,27 @@ namespace ScreenShot.views
                     Logging.Log("Dev mode disabled - restarting authentication");
                 }
 
+                // Forcefully close any active listener to free port 52805
+                try
+                {
+                    currentListener?.Stop();
+                    currentListener = null;
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[APP] Error closing listener: {ex.Message}");
+                }
+
                 // Abort current OAuth flow if one is running
                 forceOAuth2Abort = true;
+                isOAuth2InProgress = false;
+                config.OAuth2Token = null;
+                config.TokenExpiresAt = 0;
 
-                // Wait a moment for current flow to abort, then restart
-                Task.Delay(500).ContinueWith(_ =>
+                // Restart OAuth for the new server
+                Task.Delay(200).ContinueWith(_ =>
                 {
                     forceOAuth2Abort = false;
-                    isOAuth2InProgress = false;
-                    config.OAuth2Token = null;
-                    config.TokenExpiresAt = 0;
                     CheckOAuth2(() => { });
                 });
             });
@@ -476,6 +488,7 @@ namespace ScreenShot.views
                 // Prepare local listener for callback
                 using (var http = new HttpListener())
                 {
+                    currentListener = http;  // Store reference so dev mode can close it
                     http.Prefixes.Add(localCallbackUrl);
 
                     try
@@ -609,6 +622,7 @@ namespace ScreenShot.views
                     finally
                     {
                         http.Stop();
+                        currentListener = null;  // Clear reference
                     }
 
                     Current.Dispatcher.Invoke(callback);
