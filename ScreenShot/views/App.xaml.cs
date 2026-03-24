@@ -232,11 +232,21 @@ namespace ScreenShot.views
                 if (((ToolStripMenuItem)obj).Checked)
                 {
                     Interlocked.Increment(ref isDevMode);
+                    Debug.WriteLine("[APP] Dev mode ENABLED - clearing auth and restarting");
+                    Logging.Log("Dev mode enabled - restarting authentication");
                 }
                 else
                 {
                     Interlocked.Decrement(ref isDevMode);
+                    Debug.WriteLine("[APP] Dev mode DISABLED - clearing auth and restarting");
+                    Logging.Log("Dev mode disabled - restarting authentication");
                 }
+
+                // Clear token and restart OAuth for the new server
+                isOAuth2InProgress = false;
+                config.OAuth2Token = null;
+                config.TokenExpiresAt = 0;
+                CheckOAuth2(() => { });
             });
             menuEnableDevMode.CheckOnClick = true;
 
