@@ -325,7 +325,15 @@ namespace ScreenShot.views
         private async void CheckOAuth2(Action callback)
         {
             Debug.WriteLine("[OAUTH] Checking OAuth2 credentials");
-            await CheckIfOAuth2CredentialsValid(config, callback);
+            try
+            {
+                await CheckIfOAuth2CredentialsValid(config, callback);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[OAUTH] Unhandled exception in CheckOAuth2: {ex.Message}");
+                Logging.Log($"OAuth2 check failed: {ex.Message}");
+            }
         }
 
         private static Combination WPFKeysToFormsKeyCombination(IReadOnlyCollection<Key> keys)
@@ -451,7 +459,19 @@ namespace ScreenShot.views
 
                 try
                 {
-                    var context = await http.GetContextAsync();
+                    // Wait max 5 minutes for OAuth callback, then timeout and clean up
+                    var contextTask = http.GetContextAsync();
+                    var timeoutTask = Task.Delay(TimeSpan.FromMinutes(5));
+                    var firstTask = await Task.WhenAny(contextTask, timeoutTask).ConfigureAwait(true);
+
+                    if (firstTask == timeoutTask)
+                    {
+                        Debug.WriteLine("[OAUTH] ✗ OAuth callback timeout after 5 minutes");
+                        Logging.Log("OAuth callback timeout - please complete authentication faster next time");
+                        return;
+                    }
+
+                    var context = await contextTask;
                     Debug.WriteLine($"[OAUTH] ✓ Received callback at local listener");
                     Debug.WriteLine($"[OAUTH] Request URL: {context.Request.Url}");
                     Debug.WriteLine($"[OAUTH] Query string: {context.Request.QueryString}");
