@@ -322,10 +322,10 @@ namespace ScreenShot.views
             taskbarIcon.Dispose();
         }
 
-        private void CheckOAuth2(Action callback)
+        private async void CheckOAuth2(Action callback)
         {
             Debug.WriteLine("[OAUTH] Checking OAuth2 credentials");
-            CheckIfOAuth2CredentialsValid(config, callback);
+            await CheckIfOAuth2CredentialsValid(config, callback);
         }
 
         private static Combination WPFKeysToFormsKeyCombination(IReadOnlyCollection<Key> keys)
@@ -344,7 +344,7 @@ namespace ScreenShot.views
         }
 
         // OAuth2 Flow based on https://github.com/googlesamples/oauth-apps-for-windows/blob/master/OAuthDesktopApp/OAuthDesktopApp/MainWindow.xaml.cs
-        public static async void CheckIfOAuth2CredentialsValid(Config config, Action callback)
+        public static async Task CheckIfOAuth2CredentialsValid(Config config, Action callback)
         {
             const int OAUTH_CALLBACK_PORT = 52805;
             var localCallbackUrl = $"http://{IPAddress.Loopback}:{OAUTH_CALLBACK_PORT}/";
