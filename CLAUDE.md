@@ -1,5 +1,23 @@
 # Jyazo Screenshot Client - Development Notes
 
+## Building
+
+### Via MSBuild
+
+```bash
+# From project root
+cd "D:\Coding - Unsynced\JyazoC#"
+
+# Build Debug configuration
+"D:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe" ScreenShot.sln
+```
+
+Executable output: `ScreenShot/bin/Debug/Jyazo.exe`
+
+### In Visual Studio
+
+Open `ScreenShot.sln` and build (Ctrl+Shift+B).
+
 ## OAuth2 Authentication Port
 
 **CRITICAL: Port 52805 must ALWAYS be used for OAuth2 callbacks**
