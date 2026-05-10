@@ -184,8 +184,10 @@ namespace ScreenShot.src.upload
         {
             Task.Run(() =>
             {
-                using var stream = Application.GetResourceStream(new Uri("/resources/sounds/sound.wav", UriKind.Relative))?.Stream;
+                var resource = Application.GetResourceStream(new Uri("/resources/sounds/sound.wav", UriKind.Relative));
+                if (resource == null) return;
 
+                using var stream = resource.Stream;
                 var notificationSound = new SoundPlayer(stream);
                 notificationSound.PlaySync();
             });

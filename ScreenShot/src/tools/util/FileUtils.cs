@@ -23,10 +23,7 @@ namespace ScreenShot.src.tools.util
             }
 
             var path = betterFolderBrowser.SelectedPath.Replace('\\', '/');
-            if (path.EndsWith("/"))
-            {
-                path = path.Substring(0, path.Length - 1);
-            }
+            path = path.TrimEnd('/');
 
             return path;
         }

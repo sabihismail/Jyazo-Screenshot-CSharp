@@ -55,20 +55,18 @@ namespace ScreenShot.src.capture
             {
                 Debug.WriteLine($"[CAPTURE] CaptureUsingBMP starting: {capturedArea.Width}x{capturedArea.Height} at {capturedArea.Left},{capturedArea.Top}");
 
-                var bmp = new Bitmap(capturedArea.Width, capturedArea.Height, PixelFormat.Format32bppPArgb);
+                using var bmp = new Bitmap(capturedArea.Width, capturedArea.Height, PixelFormat.Format32bppPArgb);
                 Debug.WriteLine("[CAPTURE] Bitmap created");
 
-                var g = Graphics.FromImage(bmp);
-                Debug.WriteLine("[CAPTURE] Graphics object created");
-
-                g.CopyFromScreen(capturedArea.Left, capturedArea.Top, 0, 0, bmp.Size, CopyPixelOperation.SourceCopy);
-                Debug.WriteLine("[CAPTURE] Screen content copied to bitmap");
+                using (var g = Graphics.FromImage(bmp))
+                {
+                    Debug.WriteLine("[CAPTURE] Graphics object created");
+                    g.CopyFromScreen(capturedArea.Left, capturedArea.Top, 0, 0, bmp.Size, CopyPixelOperation.SourceCopy);
+                    Debug.WriteLine("[CAPTURE] Screen content copied to bitmap");
+                }
 
                 bmp.Save(file, ImageFormat.Png);
                 Debug.WriteLine($"[CAPTURE] Bitmap saved to {file}");
-
-                g.Dispose();
-                bmp.Dispose();
 
                 if (!settings.SaveAllImages)
                 {
@@ -79,6 +77,7 @@ namespace ScreenShot.src.capture
                 var output = settings.SaveDirectory + DateTimeOffset.Now.ToUnixTimeMilliseconds() + ".png";
                 Debug.WriteLine($"[CAPTURE] Moving temp file to save directory: {output}");
 
+                if (File.Exists(output)) File.Delete(output);
                 File.Move(file, output);
                 file = output;
                 Debug.WriteLine("[CAPTURE] File moved successfully");

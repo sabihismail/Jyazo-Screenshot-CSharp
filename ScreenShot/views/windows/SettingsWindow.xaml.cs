@@ -14,10 +14,10 @@ namespace ScreenShot.views.windows
         private readonly Settings settings;
         private readonly Config config;
 
-        private static bool imageShortcutSelected;
-        private static bool gifShortcutSelected;
-        private static List<Key> imageShortcutKeycodes = new();
-        private static List<Key> gifShortcutKeycodes = new();
+        private bool imageShortcutSelected;
+        private bool gifShortcutSelected;
+        private List<Key> imageShortcutKeycodes = new();
+        private List<Key> gifShortcutKeycodes = new();
 
         public SettingsWindow(Settings settings, Config config)
         {
@@ -32,7 +32,7 @@ namespace ScreenShot.views.windows
             ChkEnableGIFCapture.IsChecked = settings.EnableGIF;
 
             ChkAutomaticallySaveCapturedImagesToDisk.IsChecked = settings.SaveAllImages;
-            TxtSaveAllCapturedImages.Text = settings.SaveAllImages ? settings.SaveDirectory : "";
+            TxtSaveAllCapturedImages.Text = settings.SaveAllImages ? (settings.SaveDirectory ?? "") : "";
 
             ChkEnableImageShortcut.IsChecked = settings.EnableImageShortcut;
             ChkEnableGIFShortcut.IsChecked = settings.EnableGIFShortcut;
@@ -70,7 +70,8 @@ namespace ScreenShot.views.windows
         {
             var path = FileUtils.BrowseForDirectory();
 
-            TxtSaveAllCapturedImages.Text = path;
+            if (path != null)
+                TxtSaveAllCapturedImages.Text = path;
         }
 
         private void ChkEnableImageShortcut_OnClick(object sender, RoutedEventArgs e)
@@ -141,7 +142,7 @@ namespace ScreenShot.views.windows
                     gifShortcutKeycodes.Add(e.Key);
                 }
 
-                if (gifShortcutKeycodes.Count == 0) return;
+                if (gifShortcutKeycodes.Count <= 0) return;
 
                 UpdateShortcutText(gifShortcutKeycodes, TxtGIFShortcut);
             }

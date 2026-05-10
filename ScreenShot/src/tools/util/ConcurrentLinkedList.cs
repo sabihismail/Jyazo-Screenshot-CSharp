@@ -76,9 +76,10 @@ namespace ScreenShot.src.tools.util
 
         private void CheckSize()
         {
-            if (Count > maxCount)
+            // Called from within an existing lock(mutex) block — use lst directly to avoid re-entrancy
+            if (lst.Count > maxCount)
             {
-                RemoveFirst();
+                lst.RemoveFirst();
             }
         }
     }

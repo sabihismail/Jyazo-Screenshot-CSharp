@@ -9,7 +9,7 @@ namespace Capture
     {
         private readonly System.Collections.Generic.List<IDXHook> directXHooks = new();
         private readonly ClientCaptureInterfaceEventProxy clientEventProxy = new();
-        private readonly System.Runtime.Remoting.Channels.Ipc.IpcServerChannel clientServerChannel = null;
+        private System.Runtime.Remoting.Channels.Ipc.IpcServerChannel clientServerChannel;
         private readonly CaptureInterface captureInterface;
         private IDXHook directXHook;
         private System.Threading.ManualResetEvent runWait;
@@ -36,8 +36,8 @@ namespace Capture
                 TypeFilterLevel = System.Runtime.Serialization.Formatters.TypeFilterLevel.Full
             };
 
-            var clientServerChannelIn = new System.Runtime.Remoting.Channels.Ipc.IpcServerChannel(properties, binaryProv);
-            System.Runtime.Remoting.Channels.ChannelServices.RegisterChannel(clientServerChannelIn, false);
+            clientServerChannel = new System.Runtime.Remoting.Channels.Ipc.IpcServerChannel(properties, binaryProv);
+            System.Runtime.Remoting.Channels.ChannelServices.RegisterChannel(clientServerChannel, false);
             
             #endregion
         }

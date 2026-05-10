@@ -35,9 +35,10 @@ namespace ScreenShot.src.tools.display
 
         public static Tuple<WPFScreen, IEnumerable<WPFScreen>> AllScreensSeparated()
         {
-            var otherScreens = AllScreens().Where(x => x != Primary);
+            var primary = Primary;
+            var otherScreens = AllScreens().Where(x => !x.IsPrimary);
 
-            return Tuple.Create(Primary, otherScreens);
+            return Tuple.Create(primary, otherScreens);
         }
         
         public static WPFScreen GetScreenFrom(Window window)

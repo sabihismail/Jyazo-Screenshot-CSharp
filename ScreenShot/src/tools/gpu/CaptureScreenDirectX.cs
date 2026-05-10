@@ -11,16 +11,16 @@ namespace ScreenShot.src.tools.gpu
 {
     public static class CaptureScreenDirectX
     {
-        private static int _startX;
-        private static int _startY;
-        private static int _currentX;
-        private static int _currentY;
-        private static bool _isDragging;
-        private static bool _captureComplete;
-        private static Bitmap? _capturedBitmap;
-        private static DispatcherTimer? _renderTimer;
-        private static DirectXOverlayWindow? _overlay;
-        private static IMouseEvents? _mouseHook;
+        private static volatile int _startX;
+        private static volatile int _startY;
+        private static volatile int _currentX;
+        private static volatile int _currentY;
+        private static volatile bool _isDragging;
+        private static volatile bool _captureComplete;
+        private static volatile Bitmap? _capturedBitmap;
+        private static volatile DispatcherTimer? _renderTimer;
+        private static volatile DirectXOverlayWindow? _overlay;
+        private static volatile IMouseEvents? _mouseHook;
 
         /// <summary>
         /// Captures a screenshot of the specified window with region selection overlay.
@@ -231,6 +231,7 @@ namespace ScreenShot.src.tools.gpu
             {
                 _renderTimer?.Stop();
                 _renderTimer = null;
+                _mouseHook?.Dispose();
                 _mouseHook = null;
                 _overlay?.Dispose();
                 _overlay = null;

@@ -86,10 +86,9 @@ namespace ScreenShot.src.tools
 
                     WriteGraphicControlBlock(gifStream, _writer, Delay == 0 ? DefaultFrameDelay : Delay);
                     WriteImageBlock(gifStream, _writer, !_firstFrame, 0, 0, Image.Width, Image.Height);
-                }
 
-            if (_firstFrame)
-                _firstFrame = false;
+                    _firstFrame = false;
+                }
         }
 
         #region Write

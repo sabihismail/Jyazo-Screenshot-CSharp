@@ -24,9 +24,9 @@ namespace ScreenShot.views.capture
 
         private const int GIF_GAP = 75;
 
-        private bool enabled = true;
-        private bool paused;
-        private bool completed;
+        private volatile bool enabled = true;
+        private volatile bool paused;
+        private volatile bool completed;
 
         private readonly BitmapImage pauseImage;
         private readonly BitmapImage resumeImage;
@@ -81,7 +81,6 @@ namespace ScreenShot.views.capture
             var tasks = new List<Task>();
             using (var gifCreator = AnimatedGif.AnimatedGif.Create(file, GIF_GAP))
             {
-                var i = 0;
                 while (enabled)
                 {
                     while (paused)
@@ -91,12 +90,10 @@ namespace ScreenShot.views.capture
 
                     var task = Task.Run(() =>
                     {
-                        var bitmap = CaptureUsingBMP(capturedArea);
-                        
+                        using var bitmap = CaptureUsingBMP(capturedArea);
+
                         // ReSharper disable once AccessToDisposedClosure
                         gifCreator.AddFrame(bitmap);
-
-                        Interlocked.Increment(ref i);
                     });
 
                     tasks.Add(task);
@@ -119,9 +116,10 @@ namespace ScreenShot.views.capture
         private static Bitmap CaptureUsingBMP(Rectangle capturedArea)
         {
             var bmp = new Bitmap(capturedArea.Width, capturedArea.Height, PixelFormat.Format32bppPArgb);
-            var g = Graphics.FromImage(bmp);
-            g.CopyFromScreen(capturedArea.Left, capturedArea.Top, 0, 0, bmp.Size, CopyPixelOperation.SourceCopy);
-
+            using (var g = Graphics.FromImage(bmp))
+            {
+                g.CopyFromScreen(capturedArea.Left, capturedArea.Top, 0, 0, bmp.Size, CopyPixelOperation.SourceCopy);
+            }
             return bmp;
         }
 

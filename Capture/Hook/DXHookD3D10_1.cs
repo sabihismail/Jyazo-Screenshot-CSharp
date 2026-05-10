@@ -145,6 +145,9 @@ namespace Capture.Hook
         private Hook<DxgiSwapChainPresentDelegate> dxgiSwapChainPresentHook;
         private Hook<DxgiSwapChainResizeTargetDelegate> dxgiSwapChainResizeTargetHook;
 
+        private Font? _overlayFont;
+        private Device? _overlayFontDevice;
+
         protected override string HookName => "DXHookD3D10_1";
 
         public override void Hook()
@@ -196,6 +199,8 @@ namespace Capture.Hook
 
         public override void Cleanup()
         {
+            _overlayFont?.Dispose();
+            _overlayFont = null;
         }
 
         /// <summary>
@@ -368,27 +373,30 @@ namespace Capture.Hook
                         
                         if (Fps.GetFps() >= 1)
                         {
-                            var fd = new FontDescription
+                            if (_overlayFont == null || _overlayFontDevice != texture.Device)
                             {
-                                Height = 16,
-                                FaceName = "Arial",
-                                Italic = false,
-                                Width = 0,
-                                MipLevels = 1,
-                                CharacterSet = FontCharacterSet.Default,
-                                OutputPrecision = FontPrecision.Default,
-                                Quality = FontQuality.Antialiased,
-                                PitchAndFamily = FontPitchAndFamily.Default | FontPitchAndFamily.DontCare,
-                                Weight = FontWeight.Bold
-                            };
+                                _overlayFont?.Dispose();
+                                _overlayFont = new Font(texture.Device, new FontDescription
+                                {
+                                    Height = 16,
+                                    FaceName = "Arial",
+                                    Italic = false,
+                                    Width = 0,
+                                    MipLevels = 1,
+                                    CharacterSet = FontCharacterSet.Default,
+                                    OutputPrecision = FontPrecision.Default,
+                                    Quality = FontQuality.Antialiased,
+                                    PitchAndFamily = FontPitchAndFamily.Default | FontPitchAndFamily.DontCare,
+                                    Weight = FontWeight.Bold
+                                });
+                                _overlayFontDevice = texture.Device;
+                            }
 
-                            // TODO: do not create font every frame!
-                            using var font = new Font(texture.Device, fd);
-                            DrawText(font, new Vector2(5, 5), $"{Fps.GetFps():N0} fps", Color.Red);
+                            DrawText(_overlayFont, new Vector2(5, 5), $"{Fps.GetFps():N0} fps", Color.Red);
 
                             if (TextDisplay is { Display: true })
                             {
-                                DrawText(font, new Vector2(5, 25), TextDisplay.Text, new Color4(Color.Red.R, Color.Red.G, Color.Red.B, 
+                                DrawText(_overlayFont, new Vector2(5, 25), TextDisplay.Text, new Color4(Color.Red.R, Color.Red.G, Color.Red.B,
                                     Math.Abs(1.0f - TextDisplay.Remaining)));
                             }
                         }

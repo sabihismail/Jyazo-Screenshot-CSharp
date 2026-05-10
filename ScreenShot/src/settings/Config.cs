@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
+using Newtonsoft.Json.Linq;
 using ScreenShot.src.tools;
 using ScreenShot.views;
 
@@ -36,9 +37,31 @@ namespace ScreenShot.src.settings
 
         public bool IsTokenExpired()
         {
-            if (tokenExpiresAtImpl <= 0) return true; // No expiry info, consider expired
-            var nowUnix = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            return nowUnix >= tokenExpiresAtImpl;
+            if (string.IsNullOrWhiteSpace(tokenImpl)) return true;
+            var exp = GetJwtExpiry(tokenImpl) ?? tokenExpiresAtImpl;
+            if (exp <= 0) return true;
+            return DateTimeOffset.UtcNow.ToUnixTimeSeconds() >= exp;
+        }
+
+        private static long? GetJwtExpiry(string token)
+        {
+            try
+            {
+                var parts = token.Split('.');
+                if (parts.Length != 3) return null;
+
+                var payload = parts[1].Replace('-', '+').Replace('_', '/');
+                switch (payload.Length % 4)
+                {
+                    case 2: payload += "=="; break;
+                    case 3: payload += "="; break;
+                }
+
+                var json = Encoding.UTF8.GetString(Convert.FromBase64String(payload));
+                var obj = JObject.Parse(json);
+                return obj["exp"]?.Value<long>();
+            }
+            catch { return null; }
         }
 
         private static readonly string DbPath = GetDatabasePath();

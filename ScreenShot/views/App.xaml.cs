@@ -31,9 +31,9 @@ namespace ScreenShot.views
     {
         public static int isDevMode;
         private static int isAlreadyCapturingScreen;
-        private static bool isOAuth2InProgress = false;
-        private static bool forceOAuth2Abort = false;
-        private static System.Net.HttpListener currentListener = null;
+        private static volatile bool isOAuth2InProgress = false;
+        private static volatile bool forceOAuth2Abort = false;
+        private static volatile System.Net.HttpListener currentListener = null;
         
         private NotifyIcon taskbarIcon;
 
@@ -68,10 +68,8 @@ namespace ScreenShot.views
 
             // Show settings window on first run if server is not configured
             Debug.WriteLine($"[APP] Checking server configuration... isDevMode={isDevMode}");
-            Debug.WriteLine($"[APP] config.Server (via property): {config.Server}");
-            Debug.WriteLine($"[APP] serverImpl (direct field): {config.GetType().GetField("serverImpl", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.GetValue(config)}");
 
-            if (string.IsNullOrWhiteSpace(config.Server))
+            if (config == null || string.IsNullOrWhiteSpace(config.Server))
             {
                 Logging.Log($"Server endpoint not configured. Please input your server's image upload host location. An example php host file is located at {Constants.GITHUB}.");
                 Debug.WriteLine($"[APP] ✗ Server not configured, showing settings window");
@@ -85,7 +83,7 @@ namespace ScreenShot.views
             }
 
             // Run OAuth once at startup if server is configured but no token exists
-            if (!string.IsNullOrWhiteSpace(config.Server) && string.IsNullOrWhiteSpace(config.OAuth2Token))
+            if (config != null && !string.IsNullOrWhiteSpace(config.Server) && string.IsNullOrWhiteSpace(config.OAuth2Token))
             {
                 Debug.WriteLine($"[APP] Server configured but no OAuth token - running authentication");
                 CheckOAuth2(() => { });
