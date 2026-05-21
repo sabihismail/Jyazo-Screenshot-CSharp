@@ -399,6 +399,7 @@ namespace Capture.Hook
             }
             catch (Exception e)
             {
+                renderTargetCopyLocked = false;
                 DebugMessage(e.ToString());
             }
         }

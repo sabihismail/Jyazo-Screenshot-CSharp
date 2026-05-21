@@ -11,7 +11,7 @@ using ScreenShot.views;
 
 namespace ScreenShot.src.settings
 {
-    public class Config
+    public class Config : IDisposable
     {
         private string serverImpl = "";
         private string tokenImpl = "";
@@ -144,6 +144,11 @@ namespace ScreenShot.src.settings
             {
                 Debug.WriteLine($"[CONFIG] ✗ Connection is null after initialization");
             }
+        }
+
+        public void Dispose()
+        {
+            connection?.Dispose();
         }
 
         private void InitializeDatabase()

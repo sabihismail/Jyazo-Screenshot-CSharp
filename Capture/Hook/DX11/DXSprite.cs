@@ -307,7 +307,7 @@ technique11 SpriteTech {
 
             batchTexSrv = texSrv;
 
-            var tex = batchTexSrv.ResourceAs<Texture2D>();
+            using (var tex = batchTexSrv.ResourceAs<Texture2D>())
             {
                 var texDesc = tex.Description;
                 texWidth = texDesc.Width;

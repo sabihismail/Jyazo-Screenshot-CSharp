@@ -14,11 +14,15 @@ namespace ScreenShot.src.tools.display
         private const int MAX_TITLE_LENGTH = 256;
         private const int TIME_TO_WAIT = 100;
 
+        private static Timer _observerTimer;
+
         public static void BeginObservingWindows()
         {
-            var timer = new Timer(TIME_TO_WAIT);
+            if (_observerTimer != null) return;
 
-            timer.Elapsed += (_, _) =>
+            _observerTimer = new Timer(TIME_TO_WAIT);
+
+            _observerTimer.Elapsed += (_, _) =>
             {
                 var handle = NativeUtils.GetForegroundWindow();
 
@@ -26,17 +30,17 @@ namespace ScreenShot.src.tools.display
                 var title = NativeUtils.GetWindowText(handle, buffer, MAX_TITLE_LENGTH) > 0 ? buffer.ToString() : null;
 
                 if (string.IsNullOrWhiteSpace(title) || title.Contains("Jyazo") || title.Contains("127.0.0.1:52805") || APPLICATION_HISTORY.Last?.Name == title) return;
-                
+
                 var item = new WindowHistoryItem
                 {
                     HWND = handle,
                     Name = title
                 };
-                
+
                 APPLICATION_HISTORY.AddLast(item);
             };
-            
-            timer.Start();
+
+            _observerTimer.Start();
         }
 
         public class WindowHistoryItem

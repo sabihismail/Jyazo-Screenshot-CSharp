@@ -355,7 +355,8 @@ namespace ScreenShot.src.tools
         private static string GenerateAndStoreNewKey(string configPath)
         {
             var key = GenerateRandomPassword(32);
-            Directory.CreateDirectory(Path.GetDirectoryName(configPath)!);
+            var dir = Path.GetDirectoryName(configPath);
+            if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
 
             byte[] dataToEncrypt = Encoding.UTF8.GetBytes(key);
             byte[] encryptedData = ProtectedData.Protect(dataToEncrypt, null, DataProtectionScope.CurrentUser);

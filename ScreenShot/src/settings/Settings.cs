@@ -71,17 +71,6 @@ namespace ScreenShot.src.settings
 
         public void SaveSettings(SettingsData data)
         {
-            EnableFullscreenCapture = data.EnableFullscreenCapture;
-            EnableGIF = data.EnableGIF;
-            SaveAllImages = data.SaveAllImages;
-            SaveDirectory = string.IsNullOrWhiteSpace(data.SaveDirectory) ? Constants.DEFAULT_ALL_IMAGES_FOLDER : data.SaveDirectory;
-            EnableImageShortcut = data.EnableImageShortcut;
-            EnableGIFShortcut = data.EnableGIFShortcut;
-            _captureImageShortcutKeys = new List<Key>(data.ImageShortcutKeys);
-            _captureGIFShortcutKeys = new List<Key>(data.GifShortcutKeys);
-            EnablePrintScreen = data.EnablePrintScreen;
-            EnableSound = data.EnableSound;
-
             try
             {
                 var settingsFile = Constants.SETTINGS_FILE;
@@ -116,6 +105,18 @@ namespace ScreenShot.src.settings
                 var jsonStr = JsonConvert.SerializeObject(settingsContainer);
 
                 File.WriteAllText(settingsFile, JToken.Parse(jsonStr).ToString());
+
+                // Only update in-memory state after the file write succeeds
+                EnableFullscreenCapture = data.EnableFullscreenCapture;
+                EnableGIF = data.EnableGIF;
+                SaveAllImages = data.SaveAllImages;
+                SaveDirectory = string.IsNullOrWhiteSpace(data.SaveDirectory) ? Constants.DEFAULT_ALL_IMAGES_FOLDER : data.SaveDirectory;
+                EnableImageShortcut = data.EnableImageShortcut;
+                EnableGIFShortcut = data.EnableGIFShortcut;
+                _captureImageShortcutKeys = new List<Key>(data.ImageShortcutKeys);
+                _captureGIFShortcutKeys = new List<Key>(data.GifShortcutKeys);
+                EnablePrintScreen = data.EnablePrintScreen;
+                EnableSound = data.EnableSound;
             }
             catch (UnauthorizedAccessException uaEx)
             {
@@ -224,11 +225,14 @@ namespace ScreenShot.src.settings
         {
             var keyConverter = new KeyConverter();
 
-            var split = text.Split(' ');
-
-            return split.Select(s => keyConverter.ConvertFromString(s))
+            return text.Split(' ')
+                .Select(s =>
+                {
+                    try { return keyConverter.ConvertFromString(s); }
+                    catch { return null; }
+                })
                 .Where(x => x != null)
-                .Select(x => (Key) x)
+                .Select(x => (Key)x)
                 .ToList();
         }
 
@@ -240,9 +244,7 @@ namespace ScreenShot.src.settings
                 return "";
 
             var allKeys = keys.Aggregate("", (current, key) => current + keyConverter.ConvertToString(key) + " ");
-            allKeys = allKeys.Substring(0, allKeys.Length - 1);
-
-            return allKeys;
+            return allKeys.TrimEnd(' ');
         }
         
         // ReSharper disable once UnusedMember.Local

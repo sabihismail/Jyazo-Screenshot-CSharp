@@ -431,20 +431,32 @@ namespace Capture.Hook
 
                             // Resolve into _resolvedRT
                             resolvedRtKeyedMutex?.Acquire(0, int.MaxValue);
-                            currentRt.Device.ImmediateContext.ResolveSubresource(currentRt, 0, resolvedRt, 0,
-                                resolvedRt.Description.Format);
-                            resolvedRtKeyedMutex?.Release(1);
+                            try
+                            {
+                                currentRt.Device.ImmediateContext.ResolveSubresource(currentRt, 0, resolvedRt, 0,
+                                    resolvedRt.Description.Format);
+                            }
+                            finally
+                            {
+                                resolvedRtKeyedMutex?.Release(1);
+                            }
 
                             if (Request.Resize.HasValue)
                             {
                                 lock(mutex)
                                 {
                                     resolvedRtKeyedMutexDev2?.Acquire(1, int.MaxValue);
-                                    saQuad.ShaderResource = resolvedSrv;
-                                    saQuad.RenderTargetView = resizedRtv;
-                                    saQuad.RenderTarget = resizedRt;
-                                    saQuad.Render();
-                                    resolvedRtKeyedMutexDev2?.Release(0);
+                                    try
+                                    {
+                                        saQuad.ShaderResource = resolvedSrv;
+                                        saQuad.RenderTargetView = resizedRtv;
+                                        saQuad.RenderTarget = resizedRt;
+                                        saQuad.Render();
+                                    }
+                                    finally
+                                    {
+                                        resolvedRtKeyedMutexDev2?.Release(0);
+                                    }
                                 }
 
                                 // set sourceTexture to the resized RT
@@ -460,8 +472,14 @@ namespace Capture.Hook
                         {
                             // Copy the resource into the shared texture
                             resolvedRtKeyedMutex?.Acquire(0, int.MaxValue);
-                            currentRt.Device.ImmediateContext.CopySubresourceRegion(currentRt, 0, null, resolvedRt, 0);
-                            resolvedRtKeyedMutex?.Release(1);
+                            try
+                            {
+                                currentRt.Device.ImmediateContext.CopySubresourceRegion(currentRt, 0, null, resolvedRt, 0);
+                            }
+                            finally
+                            {
+                                resolvedRtKeyedMutex?.Release(1);
+                            }
 
                             sourceTexture = resolvedRtShared ?? resolvedRt;
                         }
@@ -480,6 +498,8 @@ namespace Capture.Hook
                             if (acquireLock && resolvedRtKeyedMutexDev2 != null)
                                 resolvedRtKeyedMutexDev2.Acquire(1, int.MaxValue);
 
+                            try
+                            {
                             lock (mutex)
                             {
                                 // Copy the subresource region, we are dealing with a flat 2D texture with no MipMapping, so 0 is the subresource index
@@ -492,10 +512,6 @@ namespace Capture.Hook
                                     Front = 0,
                                     Back = 1 // Must be 1 or only black will be copied
                                 }, finalRt, 0);
-
-                                // Release lock upon shared surface on second device
-                                if (acquireLock && resolvedRtKeyedMutexDev2 != null)
-                                    resolvedRtKeyedMutexDev2.Release(0);
 
                                 finalRt.Device.ImmediateContext.End(query);
                                 queryIssued = true;
@@ -558,6 +574,13 @@ namespace Capture.Hook
                                 {
                                     // Catch DXGI_ERROR_WAS_STILL_DRAWING and ignore - the data isn't available yet
                                 }
+                            }
+                            }
+                            finally
+                            {
+                                // Release keyed mutex on second device — must happen even if CopySubresourceRegion throws
+                                if (acquireLock && resolvedRtKeyedMutexDev2 != null)
+                                    resolvedRtKeyedMutexDev2.Release(0);
                             }
                         });
                         

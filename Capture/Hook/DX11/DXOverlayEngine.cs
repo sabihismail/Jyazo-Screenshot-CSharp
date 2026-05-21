@@ -223,10 +223,11 @@ namespace Capture.Hook.DX11
         /// <param name="disposing">true if disposing both unmanaged and managed</param>
         protected override void Dispose(bool disposing)
         {
-            if (true)
+            if (disposing)
             {
                 device = null;
             }
+            base.Dispose(disposing);
         }
     }
 }

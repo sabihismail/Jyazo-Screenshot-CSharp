@@ -115,47 +115,52 @@ namespace Capture.Hook.DX11
         private bool BuildFontSheetTexture(Bitmap fontSheetBitmap)
         {
             var bmData = fontSheetBitmap.LockBits(new System.Drawing.Rectangle(0, 0, texWidth, texHeight), ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
-            var texDesc = new Texture2DDescription
+            try
             {
-                Width = texWidth,
-                Height = texHeight,
-                MipLevels = 1,
-                ArraySize = 1,
-                Format = Format.B8G8R8A8_UNorm,
-                SampleDescription = {Count = 1, Quality = 0},
-                Usage = ResourceUsage.Immutable,
-                BindFlags = BindFlags.ShaderResource,
-                CpuAccessFlags = CpuAccessFlags.None,
-                OptionFlags = ResourceOptionFlags.None
-            };
-
-            DataBox data;
-            data.DataPointer = bmData.Scan0;
-            data.RowPitch = texWidth * 4;
-            data.SlicePitch = 0;
-
-            fontSheetTex = new Texture2D(device, texDesc, new[] { data });
-            if (fontSheetTex == null)
-                return false;
-            
-            var srvDesc = new ShaderResourceViewDescription
-            {
-                Format = Format.B8G8R8A8_UNorm,
-                Dimension = ShaderResourceViewDimension.Texture2D,
-                Texture2D =
+                var texDesc = new Texture2DDescription
                 {
-                    MipLevels = 1, 
-                    MostDetailedMip = 0
-                }
-            };
+                    Width = texWidth,
+                    Height = texHeight,
+                    MipLevels = 1,
+                    ArraySize = 1,
+                    Format = Format.B8G8R8A8_UNorm,
+                    SampleDescription = {Count = 1, Quality = 0},
+                    Usage = ResourceUsage.Immutable,
+                    BindFlags = BindFlags.ShaderResource,
+                    CpuAccessFlags = CpuAccessFlags.None,
+                    OptionFlags = ResourceOptionFlags.None
+                };
 
-            fontSheetSrv = new ShaderResourceView(device, fontSheetTex, srvDesc);
-            if (fontSheetSrv == null)
-                return false;
+                DataBox data;
+                data.DataPointer = bmData.Scan0;
+                data.RowPitch = texWidth * 4;
+                data.SlicePitch = 0;
 
-            fontSheetBitmap.UnlockBits(bmData);
+                fontSheetTex = new Texture2D(device, texDesc, new[] { data });
+                if (fontSheetTex == null)
+                    return false;
 
-            return true;
+                var srvDesc = new ShaderResourceViewDescription
+                {
+                    Format = Format.B8G8R8A8_UNorm,
+                    Dimension = ShaderResourceViewDimension.Texture2D,
+                    Texture2D =
+                    {
+                        MipLevels = 1,
+                        MostDetailedMip = 0
+                    }
+                };
+
+                fontSheetSrv = new ShaderResourceView(device, fontSheetTex, srvDesc);
+                if (fontSheetSrv == null)
+                    return false;
+
+                return true;
+            }
+            finally
+            {
+                fontSheetBitmap.UnlockBits(bmData);
+            }
         }
 
         private void MeasureChars(Font font, Graphics charGraphics)

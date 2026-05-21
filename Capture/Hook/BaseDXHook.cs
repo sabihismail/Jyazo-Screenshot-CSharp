@@ -394,7 +394,7 @@ namespace Capture.Hook
                         // Remove the event handlers
                         Interface.ScreenshotRequested -= interfaceEventProxy.ScreenshotRequestedProxyHandler;
                         Interface.DisplayText -= interfaceEventProxy.DisplayTextProxyHandler;
-                        Interface.DrawOverlay -= InterfaceEventProxy_DrawOverlay;
+                        Interface.DrawOverlay -= interfaceEventProxy.DrawOverlayProxyHandler;
                     }
                     catch (RemotingException) { } // Ignore remoting exceptions (host process may have been closed)
                 }

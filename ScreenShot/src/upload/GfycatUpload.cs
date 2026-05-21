@@ -64,12 +64,18 @@ namespace ScreenShot.src.upload
                         var jsonStr = await response.Content.ReadAsStringAsync();
                         var json = JsonConvert.DeserializeObject<OAuthResponse>(jsonStr);
 
+                        if (json == null)
+                        {
+                            Logging.Log("Gfycat Failed Acquiring Access Token: empty/unparseable response");
+                            return null;
+                        }
+
                         if (!string.IsNullOrWhiteSpace(json.AccessToken))
                         {
                             return json.AccessToken;
                         }
 
-                        Logging.Log($"Gfycat Failed Acquiring Access Token: Error Code: {json.ErrorMessage.Code}\nError Message: \"{json.ErrorMessage.Description}\"");
+                        Logging.Log($"Gfycat Failed Acquiring Access Token: Error Code: {json.ErrorMessage?.Code}\nError Message: \"{json.ErrorMessage?.Description}\"");
                         return null;
                     }
                 }

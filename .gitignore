@@ -424,3 +424,6 @@ Desktop.ini
 
 # Testing graphics pipeline hooking
 test-graphic-pipeline-apps/
+
+# User-specific settings (contains local paths)
+settings.json

@@ -26,7 +26,7 @@ namespace Capture.Interface
     public delegate void DrawOverlayEvent(DrawOverlayEventArgs args);
 
     [Serializable]
-    public class CaptureInterface : MarshalByRefObject
+    public class CaptureInterface : MarshalByRefObject, IDisposable
     {
         /// <summary>
         /// The client process Id
@@ -202,6 +202,11 @@ namespace Capture.Interface
         }
 
         #endregion
+
+        public void Dispose()
+        {
+            wait?.Dispose();
+        }
 
         /// <summary>
         /// Tell the client process to disconnect

@@ -14,7 +14,9 @@ namespace ScreenShot.src.capture
         {
             captureScreen.Closed += (sender, _) =>
             {
-                var capturedArea = ((CaptureScreen) sender).CapturedArea;
+                if (sender is not CaptureScreen screen) return;
+
+                var capturedArea = screen.CapturedArea;
 
                 OnCompleted(new CaptureCompletedEventArgs
                 {

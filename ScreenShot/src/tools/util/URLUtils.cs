@@ -10,7 +10,7 @@ namespace ScreenShot.src.tools.util
         {
             if (path.EndsWith("/") && endpoint.StartsWith("/"))
             {
-                endpoint = endpoint.Substring(0, endpoint.Length - 1);
+                endpoint = endpoint.TrimStart('/');
             }
             else if (!path.EndsWith("/") && !endpoint.StartsWith("/"))
             {

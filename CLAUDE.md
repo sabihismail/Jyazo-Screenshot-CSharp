@@ -30,13 +30,12 @@ Build both Debug and Release configurations.
 
 ```bash
 # From project root
-cd "D:\Coding - Unsynced\JyazoC#"
 
 # Build Debug configuration (default)
-"D:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe" ScreenShot.sln
+msbuild ScreenShot.sln
 
 # Build Release configuration
-"D:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe" ScreenShot.sln -p:Configuration=Release
+msbuild ScreenShot.sln -p:Configuration=Release
 ```
 
 Executable outputs:

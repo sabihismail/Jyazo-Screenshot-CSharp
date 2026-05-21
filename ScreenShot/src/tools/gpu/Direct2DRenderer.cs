@@ -69,17 +69,17 @@ namespace ScreenShot.src.tools.gpu
         /// <summary>
         ///     The do resize
         /// </summary>
-        private bool _doResize;
+        private volatile bool _doResize;
 
         /// <summary>
         ///     The resize x
         /// </summary>
-        private int _resizeX;
+        private volatile int _resizeX;
 
         /// <summary>
         ///     The resize y
         /// </summary>
-        private int _resizeY;
+        private volatile int _resizeY;
 
         /// <summary>
         ///     Initializes a new instance of the <see cref="Direct2DRenderer" /> class.
@@ -111,12 +111,10 @@ namespace ScreenShot.src.tools.gpu
         ///     Do not call if you use OverlayWindow class
         /// </summary>
         public void Dispose() {
-            DeleteBrushContainer();
-
+            try { DeleteBrushContainer(); } catch { }
             _brushContainer = null;
-
-            _factory.Dispose();
-            _device.Dispose();
+            try { _factory?.Dispose(); } catch { }
+            try { _device?.Dispose(); } catch { }
         }
 
         /// <summary>
@@ -424,7 +422,7 @@ namespace ScreenShot.src.tools.gpu
 
             _device.DrawRectangle(first, _brushContainer[brush], stroke);
 
-            if (Math.Abs(value) < 0) {
+            if (Math.Abs(value) <= 0) {
                 return;
             }
 
@@ -450,7 +448,7 @@ namespace ScreenShot.src.tools.gpu
 
             _device.DrawRectangle(first, _brushContainer[brush], stroke);
 
-            if (Math.Abs(value) < 0) {
+            if (Math.Abs(value) <= 0) {
                 return;
             }
 
