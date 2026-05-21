@@ -26,7 +26,7 @@ namespace ScreenShot.views.windows
 
             InitializeComponent();
 
-            TxtServerEndpoint.Text = config.Server;
+            TxtServerEndpoint.Text = config?.Server ?? "";
 
             ChkEnableFullscreenCapture.IsChecked = settings.EnableFullscreenCapture;
             ChkEnableGIFCapture.IsChecked = settings.EnableGIF;
@@ -93,11 +93,13 @@ namespace ScreenShot.views.windows
         {
             if (!imageShortcutSelected) return;
 
+            var key = e.Key == Key.System ? e.SystemKey : e.Key;
+
             if (imageShortcutKeycodes.Count < 3)
             {
-                if (!imageShortcutKeycodes.Contains(e.Key))
+                if (!imageShortcutKeycodes.Contains(key))
                 {
-                    imageShortcutKeycodes.Add(e.Key);
+                    imageShortcutKeycodes.Add(key);
                 }
 
                 if (imageShortcutKeycodes.Count <= 0) return;
@@ -132,14 +134,15 @@ namespace ScreenShot.views.windows
 
         private void TxtGIFShortcut_OnKeyDown(object sender, KeyEventArgs e)
         {
-
             if (!gifShortcutSelected) return;
+
+            var key = e.Key == Key.System ? e.SystemKey : e.Key;
 
             if (gifShortcutKeycodes.Count < 3)
             {
-                if (!gifShortcutKeycodes.Contains(e.Key))
+                if (!gifShortcutKeycodes.Contains(key))
                 {
-                    gifShortcutKeycodes.Add(e.Key);
+                    gifShortcutKeycodes.Add(key);
                 }
 
                 if (gifShortcutKeycodes.Count <= 0) return;
@@ -212,7 +215,7 @@ namespace ScreenShot.views.windows
             settings.SaveSettings(settingsData);
 
             // Save server endpoint to config
-            config.SaveConfig(TxtServerEndpoint.Text.Trim());
+            config?.SaveConfig(TxtServerEndpoint.Text.Trim());
 
             Close();
         }

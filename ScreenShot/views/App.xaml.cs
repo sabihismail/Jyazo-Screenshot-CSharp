@@ -22,6 +22,7 @@ using ScreenShot.src.tools.display;
 using ScreenShot.src.tools.gpu;
 using ScreenShot.src.tools.util;
 using ScreenShot.src.upload;
+using ScreenShot.views.capture;
 using ScreenShot.views.windows;
 using static ScreenShot.src.tools.util.URLUtils;
 
@@ -29,16 +30,23 @@ namespace ScreenShot.views
 {
     public partial class App
     {
-        public static int isDevMode;
+        public static volatile int isDevMode;
         private static int isAlreadyCapturingScreen;
         private static volatile bool isOAuth2InProgress = false;
         private static volatile bool forceOAuth2Abort = false;
         private static volatile System.Net.HttpListener currentListener = null;
         
+        private static NotifyIcon _taskbarIcon;
         private NotifyIcon taskbarIcon;
 
         private readonly Settings settings = new();
         private Config config;
+
+        private System.Windows.Forms.KeyEventHandler _shortcutKeyDownHandler;
+        private System.Windows.Forms.KeyEventHandler _shortcutKeyUpHandler;
+        private readonly HashSet<Keys> _pressedKeys = new();
+        private bool _imageCombinationFired;
+        private bool _gifCombinationFired;
 
         public App()
         {
@@ -75,6 +83,7 @@ namespace ScreenShot.views
                 Debug.WriteLine($"[APP] ✗ Server not configured, showing settings window");
 
                 var settingsWindow = new SettingsWindow(settings, config);
+                settingsWindow.Closed += (_, _) => ConfigureShortcuts();
                 settingsWindow.Show();
             }
             else
@@ -92,6 +101,20 @@ namespace ScreenShot.views
 
         private void ConfigureShortcuts()
         {
+            var events = Hook.GlobalEvents();
+
+            if (_shortcutKeyDownHandler != null)
+            {
+                events.KeyDown -= _shortcutKeyDownHandler;
+                events.KeyUp -= _shortcutKeyUpHandler;
+                _shortcutKeyDownHandler = null;
+                _shortcutKeyUpHandler = null;
+            }
+
+            _pressedKeys.Clear();
+            _imageCombinationFired = false;
+            _gifCombinationFired = false;
+
             if (!settings.CaptureImageShortcutKeys.Any() && !settings.CaptureGIFShortcutKeys.Any())
             {
                 Debug.WriteLine("[SHORTCUT] No shortcut keys configured");
@@ -101,23 +124,42 @@ namespace ScreenShot.views
             Debug.WriteLine($"[SHORTCUT] Image shortcut keys: {string.Join("+", settings.CaptureImageShortcutKeys)}");
             Debug.WriteLine($"[SHORTCUT] GIF shortcut keys: {string.Join("+", settings.CaptureGIFShortcutKeys)}");
 
-            var imageCombination = WPFKeysToFormsKeyCombination(settings.CaptureImageShortcutKeys);
-            var gifCombination = WPFKeysToFormsKeyCombination(settings.CaptureGIFShortcutKeys);
+            var imageKeys = settings.CaptureImageShortcutKeys
+                .Select(k => (Keys)KeyInterop.VirtualKeyFromKey(k))
+                .ToList();
+            var gifKeys = settings.CaptureGIFShortcutKeys
+                .Select(k => (Keys)KeyInterop.VirtualKeyFromKey(k))
+                .ToList();
 
-            var dictionary = new Dictionary<Combination, Action>();
-            if (imageCombination != null)
+            _shortcutKeyDownHandler = (_, e) =>
             {
-                dictionary[imageCombination] = HandleCaptureImageShortcut;
-                Debug.WriteLine($"[SHORTCUT] Registered image capture shortcut: {imageCombination}");
-            }
+                _pressedKeys.Add(e.KeyCode);
 
-            if (gifCombination != null)
+                if (settings.EnableImageShortcut && !_imageCombinationFired && imageKeys.Count > 0 && imageKeys.All(k => _pressedKeys.Contains(k)))
+                {
+                    _imageCombinationFired = true;
+                    Debug.WriteLine("[SHORTCUT] Image combination triggered");
+                    HandleCaptureImageShortcut();
+                }
+
+                if (settings.EnableGIFShortcut && !_gifCombinationFired && gifKeys.Count > 0 && gifKeys.All(k => _pressedKeys.Contains(k)))
+                {
+                    _gifCombinationFired = true;
+                    Debug.WriteLine("[SHORTCUT] GIF combination triggered");
+                    TryInstantiateCapture<CaptureGIF>();
+                }
+            };
+
+            _shortcutKeyUpHandler = (_, e) =>
             {
-                dictionary[gifCombination] = TryInstantiateCapture<CaptureGIF>;
-                Debug.WriteLine($"[SHORTCUT] Registered GIF capture shortcut: {gifCombination}");
-            }
+                _pressedKeys.Remove(e.KeyCode);
+                _imageCombinationFired = false;
+                _gifCombinationFired = false;
+            };
 
-            Hook.GlobalEvents().OnCombination(dictionary);
+            events.KeyDown += _shortcutKeyDownHandler;
+            events.KeyUp += _shortcutKeyUpHandler;
+
             Debug.WriteLine("[SHORTCUT] Global hook registered");
         }
         
@@ -179,6 +221,7 @@ namespace ScreenShot.views
 
         private void TryInstantiateCapture<T>() where T : src.capture.Capture
         {
+            if (config == null) return;
             if (isAlreadyCapturingScreen > 0) return;
 
             Interlocked.Increment(ref isAlreadyCapturingScreen);
@@ -223,7 +266,7 @@ namespace ScreenShot.views
             var menuSettings = new ToolStripMenuItem("Settings", null, (_, _) =>
             {
                 var settingsWindow = new SettingsWindow(settings, config);
-
+                settingsWindow.Closed += (_, _) => ConfigureShortcuts();
                 settingsWindow.Show();
             });
 
@@ -292,7 +335,7 @@ namespace ScreenShot.views
             strip.Items[0].Font = new Font(strip.Items[0].Font, strip.Items[0].Font.Style | System.Drawing.FontStyle.Bold);
             strip.Items[1].Font = new Font(strip.Items[1].Font, strip.Items[1].Font.Style | System.Drawing.FontStyle.Bold);
 
-            taskbarIcon = new NotifyIcon
+            taskbarIcon = _taskbarIcon = new NotifyIcon
             {
                 ContextMenuStrip = strip
             };
@@ -345,10 +388,17 @@ namespace ScreenShot.views
             taskbarIcon.Visible = true;
         }
 
+        public static void ShowErrorNotification(string message)
+        {
+            _taskbarIcon?.ShowBalloonTip(5000, "Jyazo — Upload Failed", message, ToolTipIcon.Error);
+        }
+
         private void Application_Exit(object sender, System.Windows.ExitEventArgs e)
         {
             CaptureScreenDirectX.ClearOverlayWindows();
+            config?.Dispose();
             taskbarIcon.Dispose();
+            CaptureScreen.DisposeHook();
         }
 
         private async void CheckOAuth2(Action callback)
@@ -363,21 +413,6 @@ namespace ScreenShot.views
                 Debug.WriteLine($"[OAUTH] Unhandled exception in CheckOAuth2: {ex.Message}");
                 Logging.Log($"OAuth2 check failed: {ex.Message}");
             }
-        }
-
-        private static Combination WPFKeysToFormsKeyCombination(IReadOnlyCollection<Key> keys)
-        {
-            if (!keys.Any()) return null;
-            
-            var wpfKeys = keys.Select(KeyInterop.VirtualKeyFromKey)
-                .Select(x => (Keys) x)
-                .Select(x => x.ToString())
-                .ToList();
-
-            var wpfString = string.Join("+", wpfKeys);
-            var combination = Combination.FromString(wpfString);
-            
-            return combination;
         }
 
         // OAuth2 Flow based on https://github.com/googlesamples/oauth-apps-for-windows/blob/master/OAuthDesktopApp/OAuthDesktopApp/MainWindow.xaml.cs

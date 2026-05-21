@@ -2,8 +2,10 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Media;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
@@ -70,6 +72,7 @@ namespace ScreenShot.src.upload
                 if (!authSuccess)
                 {
                     Logging.Log("Authentication failed. Cannot upload without valid credentials.");
+                    App.ShowErrorNotification("Not logged in — authentication failed or timed out.");
                     return "";
                 }
             }
@@ -133,12 +136,14 @@ namespace ScreenShot.src.upload
 
                 Debug.WriteLine($"[UPLOAD] ✗ Server error: {result.Error}");
                 Logging.Log("The server responded with:\n" + result.Error);
+                App.ShowErrorNotification($"Server error: {result.Error}");
                 return "";
             }
             catch (Exception e)
             {
                 Debug.WriteLine($"[UPLOAD] Exception: {e}");
                 Logging.Log($"Could not upload screenshot to {server}.\nError: " + e);
+                App.ShowErrorNotification(GetUploadErrorMessage(e));
             }
 
             return "";
@@ -191,6 +196,32 @@ namespace ScreenShot.src.upload
                 var notificationSound = new SoundPlayer(stream);
                 notificationSound.PlaySync();
             });
+        }
+
+        private static string GetUploadErrorMessage(Exception e)
+        {
+            for (var ex = e; ex != null; ex = ex.InnerException)
+            {
+                if (ex is SocketException se)
+                {
+                    return se.SocketErrorCode switch
+                    {
+                        SocketError.ConnectionRefused => "Server is offline or refusing connections.",
+                        SocketError.HostNotFound or SocketError.HostUnreachable => "Server address not found — check your server URL.",
+                        SocketError.TimedOut => "Connection timed out — server took too long to respond.",
+                        SocketError.NetworkUnreachable => "No network connection.",
+                        _ => $"Network error: {se.Message}"
+                    };
+                }
+
+                if (ex is TaskCanceledException or TimeoutException)
+                    return "Upload timed out — server took too long to respond.";
+
+                if (ex is HttpRequestException && ex.InnerException == null)
+                    return $"HTTP error: {ex.Message}";
+            }
+
+            return $"Upload failed: {e.Message}";
         }
 
         public class ServerResponse

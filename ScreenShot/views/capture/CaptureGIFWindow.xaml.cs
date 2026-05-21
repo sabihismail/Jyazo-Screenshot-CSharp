@@ -9,6 +9,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using Gma.System.MouseKeyHook;
 using ScreenShot.src.settings;
 using ScreenShot.src.upload;
 using PixelFormat = System.Drawing.Imaging.PixelFormat;
@@ -37,8 +38,18 @@ namespace ScreenShot.views.capture
             resumeImage = new BitmapImage(new Uri("pack://application:,,,/resources/images/resume.png"));
             var cancelImage = new BitmapImage(new Uri("pack://application:,,,/resources/images/cancel.png"));
             var completeImage = new BitmapImage(new Uri("pack://application:,,,/resources/images/complete.png"));
-            
+
             InitializeComponent();
+
+            System.Windows.Forms.KeyEventHandler escapeHandler = null;
+            escapeHandler = (_, e) =>
+            {
+                if (e.KeyCode != System.Windows.Forms.Keys.Escape) return;
+                Hook.GlobalEvents().KeyDown -= escapeHandler;
+                Dispatcher.Invoke(() => { enabled = false; Close(); });
+            };
+            Hook.GlobalEvents().KeyDown += escapeHandler;
+            Closing += (_, _) => Hook.GlobalEvents().KeyDown -= escapeHandler;
 
             Width = capturedArea.Width + THICKNESS * 2;
             Height = capturedArea.Height + THICKNESS * 2 + Cancel.Height + BUTTON_GAP_Y;

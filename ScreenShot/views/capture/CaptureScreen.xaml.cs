@@ -16,12 +16,16 @@ namespace ScreenShot.views.capture
     {
         private static readonly IKeyboardMouseEvents MOUSE_HOOK = Hook.GlobalEvents();
 
+        public static void DisposeHook() => MOUSE_HOOK.Dispose();
+
         public System.Drawing.Rectangle? CapturedArea;
 
         private Rectangle rect;
 
         private int startX;
         private int startY;
+
+        private System.Windows.Forms.KeyEventHandler _escapeHandler;
 
         public CaptureScreen()
         {
@@ -32,6 +36,13 @@ namespace ScreenShot.views.capture
             Cursor = Cursors.Cross;
 
             MOUSE_HOOK.MouseUpExt += GlobalHookMouseUpExt;
+
+            _escapeHandler = (_, e) =>
+            {
+                if (e.KeyCode == System.Windows.Forms.Keys.Escape)
+                    Dispatcher.Invoke(Close);
+            };
+            MOUSE_HOOK.KeyDown += _escapeHandler;
 
             WindowState = WindowState.Maximized;
             Debug.WriteLine("[UI] CaptureScreen window maximized and ready for selection");
@@ -152,6 +163,7 @@ namespace ScreenShot.views.capture
         {
             Debug.WriteLine("[UI] Window closing, cleaning up mouse hook");
             MOUSE_HOOK.MouseUpExt -= GlobalHookMouseUpExt;
+            MOUSE_HOOK.KeyDown -= _escapeHandler;
         }
     }
 }

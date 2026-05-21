@@ -20,7 +20,7 @@ namespace ScreenShot.src.tools.gpu
         private static volatile Bitmap? _capturedBitmap;
         private static volatile DispatcherTimer? _renderTimer;
         private static volatile DirectXOverlayWindow? _overlay;
-        private static volatile IMouseEvents? _mouseHook;
+        private static volatile IKeyboardMouseEvents? _mouseHook;
 
         /// <summary>
         /// Captures a screenshot of the specified window with region selection overlay.
